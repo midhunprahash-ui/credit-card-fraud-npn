@@ -1,254 +1,194 @@
-# Feature Engineering Guide
+# Feature engineering guide
 
-This guide explains, in simple terms, how raw IEEE-CIS transaction data is turned into useful model inputs. It describes the features **currently created in Notebook 01** and clearly separates them from suggested future improvements.
+This guide explains what the finalized Lightning AI pipeline does, why each
+decision is made, and how the same fraud evidence is represented for four
+different algorithms.
 
-## 1. What is feature engineering?
-
-Feature engineering means creating clearer and more useful signals from raw data so a machine-learning model can recognize suspicious behavior.
-
-For example, a raw field such as `TransactionAmt` is useful, but a model may learn more easily from both:
+## 1. Shared data population
 
 ```text
-TransactionAmt       = 5,000
-log_TransactionAmt   = log(1 + 5,000)
+train_transaction
+        LEFT JOIN train_identity ON TransactionID
 ```
 
-The logarithmic version reduces the influence of a few extremely large payments while retaining the difference between small and large payments.
+The left join retains all 590,540 labelled transactions. Only about 24.42% have
+an identity row. An inner join would remove most of the training population and
+produce an unrealistic model.
 
-The key principle is: **use only information that would have been available when the transaction occurred.** Do not use fraud labels, future transactions, or validation/test data to build training features.
+`has_identity` distinguishes “no identity record exists” from “an identity row
+exists but a particular identity value is missing.”
 
-## 2. Shared pipeline: the same business signals for every model
+## 2. Features created before the split
 
-All three models use the same starting dataset, base cleaning, engineered features, and chronological split.
+Shared features use only values already present in the current transaction row.
+They do not learn medians, frequencies, vocabularies, or fraud rates.
 
-```text
-Transaction table + identity table
-              ↓
-Left join on TransactionID
-              ↓
-Shared engineered features
-              ↓
-Chronological 70% / 15% / 15% split
-              ↓
-Model-specific formatting only
-      ├── Logistic Regression
-      ├── LightGBM
-      └── CatBoost
-```
-
-This makes the model comparison fair: each model receives the same underlying business information. Only the final representation changes because the algorithms accept different data formats.
-
-## 3. Step 1 — merge the two source tables
-
-The dataset has two related files:
-
-- `train_transaction.csv`: one row per payment, with amount, card-related fields, emails, addresses, and anonymized variables.
-- `train_identity.csv`: device, browser, operating system, and other identity signals for only some payments.
-
-They are joined on `TransactionID` with a **left join**:
-
-```python
-train = train_transaction.merge(train_identity, on="TransactionID", how="left")
-```
-
-A left join preserves all 590,540 transactions, then fills identity fields where they exist. An inner join would throw away the roughly 75.6% of transactions that have no identity record.
-
-### `has_identity`
-
-```python
-has_identity = 1  # an identity-table row exists
-has_identity = 0  # no identity-table row exists
-```
-
-This is deliberately created because the absence of identity data can be informative. In this dataset, transactions with identity data and transactions without it have different fraud rates.
-
-## 4. Step 2 — common engineered features currently implemented
-
-These are defined in `add_common_features()` in `notebooks/01_colab_data_preparation.ipynb`.
-
-| Feature | Raw columns used | How it is created | Why it helps |
-| --- | --- | --- | --- |
-| `log_TransactionAmt` | `TransactionAmt` | `log1p(TransactionAmt)` | Large amounts are heavily skewed; the log version makes their scale easier for models to learn. |
-| `transaction_day` | `TransactionDT` | Relative seconds ÷ 86,400 | Captures change in behavior over the 182-day period. |
-| `transaction_week` | `TransactionDT` | Relative seconds ÷ 604,800 | Captures broader weekly patterns. |
-| `transaction_hour` | `TransactionDT` | Relative hour modulo 24 | Certain hours can have different fraud behavior. |
-| `is_weekend` | `transaction_day` | Day index mapped to a weekend flag | Weekend shopping behavior may differ from weekday behavior. |
-| `has_identity` | Join result | 1 if identity row exists, otherwise 0 | Preserves useful information about identity-data availability. |
-| `<column>_missing` | Selected important columns | 1 when the source field is missing, otherwise 0 | Missing information can be a risk signal rather than just a data problem. |
-| `card1_card2` | `card1`, `card2` | String concatenation, with `MISSING` where needed | Lets the model see a card combination rather than two independent pieces. |
-| `addr1_addr2` | `addr1`, `addr2` | String concatenation, with `MISSING` where needed | Represents a combined address pattern. |
-| `email_pair` | `P_emaildomain`, `R_emaildomain` | String concatenation, with `MISSING` where needed | Captures the sender/receiver email-domain relationship. |
-
-### Missingness flags currently added
-
-The current notebook adds missingness indicators for these fields when present:
-
-```text
-TransactionAmt, dist1, dist2, DeviceInfo, id_30, id_31
-```
-
-For example:
-
-```text
-DeviceInfo = "SM-G950F"       → DeviceInfo_missing = 0
-DeviceInfo = missing           → DeviceInfo_missing = 1
-```
-
-This lets a model distinguish a true value from a value that is absent.
-
-### Why each current feature is worth creating
-
-| Transformation | Fraud question it helps answer | Why raw data alone is not enough |
+| Feature | Construction | Reason |
 | --- | --- | --- |
-| `log_TransactionAmt` | “Is this unusually large relative to normal payment scale?” | Amounts are strongly right-skewed. A few very large payments can dominate the raw scale; the log feature compresses those extremes while retaining useful ordering. |
-| Day/week/hour features | “Does risk change by time period or shopping hour?” | `TransactionDT` is one large second count. Splitting it into day, week, and hour makes repeated calendar-like patterns easier for the model to learn. |
-| `is_weekend` | “Does weekend behavior have a different risk profile?” | This converts several day values into one simple business-pattern flag; a tree can use it without having to infer the grouping itself. |
-| `has_identity` | “Was a device/identity record available for this payment?” | A null identity field could mean either no identity row or an empty field within an identity row. This explicit flag makes the important distinction visible. |
-| Missingness flags | “Was potentially useful context unavailable?” | Replacing a null with a value alone loses the fact that it was absent. The flag preserves that fact, allowing the model to learn whether missing device, browser, or distance information changes risk. |
-| Card/address/email combinations | “Is this particular combination unusual or risky?” | The same card value can behave differently with different address, email, or card-detail combinations. Concatenation lets the model learn the relationship as one category. |
+| `has_identity` | Whether an identity-table row exists | Identity availability has a different fraud profile and is missing for most rows. |
+| `num_missing` | Null count across source inputs | Overall information sparsity can itself be predictive. |
+| `transaction_missing` | Missing count for basic transaction fields | Separates transaction-data absence from identity absence. |
+| `card_address_missing` | Missing count for card/address fields | Indicates incomplete payment-location context. |
+| `identity_missing` | Missing count for identity/device fields | Summarizes device and browser evidence availability. |
+| `transaction_amount_log1p` | `log(1 + max(amount, 0))` | Compresses the long amount tail while retaining order. |
+| `transaction_amount_cents` | Decimal/cents component | Payment pricing patterns may differ by fraud behavior. |
+| `transaction_relative_day` | `TransactionDT // 86400` | Captures progress through the observed dataset period. |
+| `transaction_relative_week` | `TransactionDT // 604800` | Captures slower time variation. |
+| `transaction_relative_hour_phase` | Seconds modulo one day, divided by 3600 | Adds a periodic phase without claiming a real timezone clock. |
+| `card_1_2` | `card1 + card2` | Represents a combined card identity. |
+| `address_1_2` | `addr1 + addr2` | Represents an address combination. |
+| `email_pair` | payer + recipient email domains | Captures relationships between email sides. |
 
-These features do not declare that a particular value is fraudulent. They give the model structured signals which it tests against the known `isFraud` labels during training.
+`TransactionDT` has an undisclosed calendar origin. Therefore, the finalized
+pipeline does not create an `is_weekend` claim and does not call the periodic
+phase a real hour of day.
 
-## 5. Cleaning before modelling
+## 3. Cleaning and chronological partitions
 
-The preparation notebook applies light, safe cleaning that is common to every model:
-
-1. **Keep all rows after the left join.** Missing identity values are retained.
-2. **Remove all-empty features.** A column with no values cannot help a model.
-3. **Remove constant features.** A column with only one value cannot separate fraud from non-fraud.
-4. **Keep the target separate.** `isFraud` is used only as the training label, never as a model input.
-5. **Exclude `TransactionID` from model features.** It is a row identifier, not a meaningful business signal for deployment.
-6. **Sort by `TransactionDT`.** The first 70% is training data, the next 15% validation data, and the final 15% is the untouched test set.
-
-### Why each cleaning decision is made
-
-| Decision | Why it is done | What would go wrong otherwise |
-| --- | --- | --- |
-| Retain rows with null identity fields | Real scoring traffic can lack device/identity information, and absence can carry signal. | Dropping them removes ~75% of transactions and makes the trained model unrepresentative. |
-| Drop all-empty columns | They contain no observed information. | They consume memory and add no predictive value. |
-| Drop constant columns | Every row has the same value, so they cannot distinguish classes. | They add useless computation and clutter feature-importance output. |
-| Exclude `TransactionID` | It is an arbitrary row identifier, not a stable customer/payment behavior signal. | The model can learn accidental sequence effects that will not generalize to future transactions. |
-| Keep `isFraud` outside inputs | It is the answer we want the model to predict. | Including it would be direct target leakage and produce a meaningless score. |
-| Chronological split | Fraud patterns change over time, and production always predicts the future from the past. | A random split lets future patterns appear in training and gives overly optimistic evaluation. |
-
-The notebook does **not** globally fill every missing number with a median. That is intentional: LightGBM and CatBoost can work with numeric missing values, and the missingness flags preserve the fact that a value was absent. Logistic Regression performs median imputation inside its own pipeline because that model cannot accept missing values.
-
-### Null-value strategy and its reasoning
-
-| Situation | Current action | Why |
-| --- | --- | --- |
-| Numeric null in CatBoost or LightGBM | Leave as `NaN` | Both tree libraries can learn a separate split path for missing values, preserving the missingness signal. |
-| Categorical null | Replace with the string `MISSING` | A category needs a valid label; `MISSING` makes absence an explicit category rather than silently deleting the row. |
-| Numeric null for Logistic Regression | Median-impute within the training-fitted pipeline | Logistic Regression cannot train with `NaN`; median is robust to large outliers and is calculated from training data only. |
-| All-null column | Remove | There is no value or missingness variation to learn from. |
-| Very sparse column, e.g. >95% null | Keep for the first tree-model benchmark; evaluate later | Sparsity is not proof of uselessness. Some rare device/identity values can be highly predictive. |
-
-## 6. High-cardinality categorical features
-
-A categorical field has a limited set of labels, such as:
+The data is sorted by `TransactionDT`, with `TransactionID` as a deterministic
+tie breaker:
 
 ```text
-ProductCD: W, C, H, R, S
+Earliest 70% → training
+Next 15%     → validation
+Latest 15%   → final chronological holdout
 ```
 
-A **high-cardinality** categorical feature has many different labels. Examples in this project include device/browser fields, email domains, and engineered combinations such as `card1_card2`. Direct one-hot encoding would create a huge number of sparse columns, slow training, and make overfitting more likely.
+All-null and constant columns are identified using training only. `isFraud` is
+the target and `TransactionID` remains only for traceability; neither enters a
+model.
 
-### Current approach: model-specific representation
+No global median fill occurs in shared preparation because CatBoost and
+LightGBM can preserve numeric missingness, while Logistic Regression and the
+neural network need their own fitted transformations.
 
-| Model | Categorical treatment | Why |
-| --- | --- | --- |
-| Logistic Regression | Training-only frequency encoding | Logistic Regression needs numeric input. Frequency encoding keeps the column compact. |
-| LightGBM | Training-only frequency encoding | This keeps memory use manageable and avoids thousands of one-hot columns. |
-| CatBoost | Native categorical processing for text/object columns | CatBoost learns from category labels directly and is designed for this situation. |
+## 4. Numeric-looking identifiers
 
-### Frequency encoding, in plain terms
+`card1`, `card2`, `card3`, `card5`, `addr1`, and `addr2` are stored as numbers,
+but their values are codes. A code of 9000 is not quantitatively larger than a
+code of 1000.
 
-Frequency encoding replaces a label with how often it appears in the **training split**.
+They are therefore handled as:
 
-```text
-Training values for DeviceInfo:
-"Windows"       occurs in 12.0% of training rows → 0.120
-"Rare device X" occurs in 0.02% of training rows → 0.0002
-```
+- frequency signals for Logistic Regression and high-cardinality LightGBM paths;
+- categorical strings for CatBoost;
+- categorical embedding IDs for the neural network.
 
-The model can then recognize common and rare patterns without creating one column per device. An unseen validation or test category becomes `0`.
+Actual continuous measurements—including anonymized `V*`, `C*`, `D*`, and
+numeric `id_*` fields—remain numerical. A continuous field is not discarded
+merely because it has thousands of unique values.
 
-The reason this helps fraud detection is that rare card/device/email combinations may behave differently from common ones. Frequency is only one signal: a rare value is not automatically fraud, but it gives the model useful context when combined with amount, time, and identity features.
+## 5. Cardinality policy
 
-### Why “training-only” matters
+Cardinality is the number of distinct labels in a categorical field, measured
+on the training partition only.
 
-The frequency map is calculated from training rows only, then applied to validation/test rows.
+| Band | Training unique labels |
+| --- | ---: |
+| Low | 0–20 |
+| Medium | 21–100 |
+| High | 101–1,000 |
+| Very high | More than 1,000 |
 
-```text
-Training split → build frequency map
-Validation/test → look up values in that map
-```
+High cardinality is not inherently bad. It becomes a problem when represented
+with a huge one-hot matrix or when rare labels overfit.
 
-If we calculate frequencies using all data first, validation/test information leaks into training. The reported model score would look better than real-world performance.
+The pipeline reserves three meanings:
 
-### Important implementation detail: numeric identifier-like fields
+- `MISSING`: no value was supplied;
+- `OTHER`: the label existed in training but was too rare;
+- `UNKNOWN`: the label was not seen during training.
 
-Fields such as `card1`, `card2`, `addr1`, and `addr2` are numerically typed in the Kaggle CSV. The current notebooks leave their original numeric columns as numeric values. Their engineered string combinations (`card1_card2`, `addr1_addr2`) are treated as categorical.
+Rare means fewer than 20 training occurrences by default. This threshold is
+configurable and must be tuned using validation data rather than the holdout.
 
-For the next feature-engineering iteration, we should also create **training-only frequency features** for individual identifier-like numeric columns (for example `card1_freq`, `addr1_freq`). This is planned work, not something the current notebooks already claim to do.
-
-## 7. How the three pipelines differ
-
-The business features are shared. The preprocessing applied immediately before each model differs:
-
-| Step | Logistic Regression | LightGBM | CatBoost |
-| --- | --- | --- | --- |
-| Numeric missing values | Median imputation | Left as missing | Left as missing |
-| Categorical missing values | Replaced with `MISSING` before frequency encoding | Replaced with `MISSING` before frequency encoding | Replaced with `MISSING` strings |
-| Categorical features | Frequency-encoded to numeric values | Frequency-encoded to numeric values | Text/object categoricals passed directly to CatBoost |
-| Numeric scaling | StandardScaler | Not required | Not required |
-| Imbalance handling | `class_weight="balanced"` | `scale_pos_weight` | `class_weights` |
-
-The differences are requirements of the algorithms, not different business logic. All models receive the same underlying amount, time, identity, missingness, and combination signals.
+## 6. Model-specific representations
 
 ### Logistic Regression
 
-Logistic Regression expects a complete numeric matrix. Therefore it needs the most preprocessing:
+| Input | Transformation | Why |
+| --- | --- | --- |
+| Numeric quantity | Training median, missing indicator, standard scaling | Linear solvers cannot accept NaN and are sensitive to scale. |
+| Low/medium category | Rare grouping and sparse one-hot encoding | Preserves category identity at manageable width. |
+| High-cardinality category/code | Training-only frequency encoding | Avoids enormous one-hot matrices. |
 
-```text
-categorical label → training-only frequency number
-missing numeric value → median
-numeric feature → standardized scale
-```
-
-It is useful as an interpretable baseline, not expected to be the final winner for nonlinear fraud patterns.
+The transformations and classifier are saved together in `model.joblib`.
 
 ### LightGBM
 
-LightGBM is a boosted decision-tree model. It can handle numeric missing values and does not require scaling. In the current comparison, categorical labels are frequency-encoded to compact numeric columns.
+| Input | Transformation | Why |
+| --- | --- | --- |
+| Numeric quantity | Retain numeric value and NaN | Trees learn missing branches and need no scaling. |
+| Low/medium category | Stable categorical levels | LightGBM can split on native categories. |
+| High-cardinality category/code | Training-only frequency encoding | Controls memory and category complexity. |
+
+The mappings are saved in `preprocessor.joblib`; the booster is `model.txt`.
 
 ### CatBoost
 
-CatBoost is also a boosted decision-tree model but has native support for categorical text/object columns. We fill categorical nulls with `MISSING`, keep category labels as strings, and tell CatBoost which columns are categorical. This is why it is the simplest strong candidate for the final model.
+| Input | Transformation | Why |
+| --- | --- | --- |
+| Numeric quantity | Retain numeric value and NaN | Native numeric missing handling. |
+| All categorical and identifier fields | String labels with `MISSING` | CatBoost learns ordered categorical statistics without huge one-hot expansion. |
 
-## 8. Features we should add after the first benchmark
+No manual target encoding is added. The model is saved as `model.cbm`, with a
+small schema/order preprocessor in Joblib.
 
-The current set is a sound, leakage-safe baseline. After recording initial metrics, add and test these features one group at a time:
+### Neural network
 
-1. **Individual frequency features:** frequency of `card1`, `card2`, `card3`, `card5`, `addr1`, `addr2`, `DeviceInfo`, and email domains.
-2. **Rare-category grouping:** replace labels appearing fewer than a chosen training-only threshold with `OTHER`.
-3. **Amount behavior features:** integer/decimal parts of the amount and transaction-amount bands.
-4. **Historical behavior:** prior transaction count, prior mean amount, and time since prior activity for the same card/device/address.
-5. **Cross features:** card + email domain, device + browser, card + address.
+| Input | Transformation | Why |
+| --- | --- | --- |
+| Numeric quantity | Training median, missing flag, standard scaling | Stable gradient optimization and explicit absence signal. |
+| Categorical/identifier field | Training vocabulary and embedding ID | Learns compact category representations. |
+| Rare/unseen/missing label | Reserved `OTHER`/`UNKNOWN`/`MISSING` IDs | Stable inference on future categories. |
 
-Every new group must be validated on the same chronological validation split. Keep it only if it improves PR-AUC/ROC-AUC or the review-queue business metric.
+Embeddings are concatenated with numeric inputs and passed through dense layers
+`256 → 128 → 64 → 1`.
 
-## 9. Leakage checklist
+## 7. Missing-value reasoning
 
-Before accepting a feature, ask:
+- Rows are not removed because real transactions often lack identity data.
+- Sparse columns are not automatically removed; absence can contain fraud signal.
+- Tree models retain numeric NaN.
+- Linear and neural models use training medians plus explicit missing indicators.
+- Categorical missingness becomes a real `MISSING` category.
+- All-null and constant training columns are removed because they contain no
+  variation during the learning period.
 
-- Is this value available at the time the transaction is scored?
-- Is the mapping/aggregate fitted only on earlier training data?
-- Does it accidentally contain `isFraud` or a post-transaction decision?
-- Is it applied identically in training, validation, test, API, and dashboard scoring?
+## 8. Leakage prevention
 
-If any answer is no, do not use the feature.
+The following objects are fitted using training rows only:
 
-## 10. One-minute presentation explanation
+- numerical medians, means, and standard deviations;
+- rare-category decisions;
+- frequency maps;
+- categorical levels;
+- neural-network vocabularies;
+- model parameters.
 
-> “We merge each transaction with any available device and identity information using a left join, so we retain all transactions. We create amount, time, missingness, identity-availability, and card/address/email combination signals. The same engineered features are used for every model. Logistic Regression and LightGBM receive compact frequency-encoded categoricals, while CatBoost receives categorical labels directly. Every transformation is fitted on earlier training data only, which prevents leakage.”
+Validation selects hyperparameters and the decision threshold. The latest 15%
+must not influence those decisions.
+
+## 9. Feature importance and later reduction
+
+EDA provides candidate signals but cannot prove final importance because fraud
+patterns are nonlinear and interaction-heavy. The baseline begins with all
+usable features. After valid runs:
+
+1. Collect logistic coefficient magnitudes, LightGBM gain, CatBoost importance,
+   and neural grouped ablations.
+2. Create a consensus candidate ranking.
+3. Retrain a reduced 150–250-feature version on the same training/validation rows.
+4. Keep the reduced version only if validation performance and operational
+   metrics are similar or better.
+5. Do not use the holdout to choose the feature count.
+
+## 10. Interview summary
+
+> We preserve all transactions through a left join, create only row-available
+> shared signals, and freeze chronological partitions. The underlying evidence
+> is common, but its representation matches each algorithm: sparse encoding for
+> the linear baseline, native/frequency categoricals for LightGBM, ordered
+> categorical handling for CatBoost, and learned embeddings for the neural
+> network. Every learned mapping is fitted on the earliest training period only
+> and saved with the model for identical API inference.

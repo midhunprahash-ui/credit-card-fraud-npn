@@ -1,6 +1,6 @@
 # Four-Model Experiment Plan
 
-This is the agreed machine-learning plan for the IEEE-CIS fraud-detection project. It describes exactly what each model will receive, why it is included, how it will be trained, and how we will select a deployment model.
+This is the agreed machine-learning plan for the IEEE-CIS fraud-detection project. It describes exactly what each model receives, why it is included, how it is trained, and how the four results are compared in the deployed hackathon application.
 
 ## 1. Decision summary
 
@@ -13,7 +13,7 @@ We will compare four supervised binary-classification approaches:
 | 3 | CatBoost | Main categorical-aware candidate | Strong handling of missing values and high-cardinality categories. |
 | 4 | Embedding-based tabular neural network | Deep-learning benchmark | Learns compact representations of cards, devices, emails, and other high-cardinality categories. |
 
-We will deploy **the model with the best business-relevant chronological validation and holdout-test results**, not automatically CatBoost or the neural network.
+The hackathon application loads and displays **all four approved model bundles**. We still identify a champion in the comparison table, but the champion label does not hide the other three outputs.
 
 ## 2. The rule that makes the comparison fair
 
@@ -71,7 +71,7 @@ These features use only the current transaction row, so they are available at re
 | Signal group | Current features | Why it is useful |
 | --- | --- | --- |
 | Amount | `TransactionAmt`, `log_TransactionAmt` | Captures payment scale while reducing skew from extreme amounts. |
-| Time | `transaction_day`, `transaction_week`, `transaction_hour`, `is_weekend` | Fraud risk and shopping behavior vary through the observed timeline. |
+| Relative time | `transaction_relative_day`, `transaction_relative_week`, `transaction_relative_hour_phase` | Captures movement and periodic phase in the observed timeline without claiming an undisclosed calendar origin. |
 | Identity availability | `has_identity` | Device/identity availability has a different fraud profile from its absence. |
 | Missingness | selected `<field>_missing` flags and `num_missing` | Missing context can itself be a risk signal. |
 | Combined entities | `card1_card2`, `addr1_addr2`, `email_pair` | Risk can depend on a combination rather than one field alone. |
@@ -214,8 +214,8 @@ Categorical labels → integer IDs → embedding layers
                                            ↓
 Numeric features → imputation + scaling ──┼→ concatenate
                                            ↓
-Dense(256) → BatchNorm → ReLU → Dropout(0.30)
-Dense(128) → BatchNorm → ReLU → Dropout(0.20)
+Dense(256) → ReLU → Dropout(0.30)
+Dense(128) → ReLU → Dropout(0.20)
 Dense(64)  → ReLU → Dropout(0.10)
 Dense(1)   → logit → sigmoid fraud probability
 ```
@@ -231,7 +231,7 @@ Embedding size is selected from each category count and capped (for example, a s
 
 ### Strength and limitation
 
-It gives a genuine deep-learning comparison and uses the T4 well. On medium-size structured data, it may not beat CatBoost/LightGBM; we will report the real comparison and deploy it only if it wins on the final criteria.
+It gives a genuine deep-learning comparison and uses the T4 well. On medium-size structured data, it may not beat CatBoost/LightGBM; we will report the real result and still show its independent output in the four-model application.
 
 ## 8. Common imbalance treatment
 
@@ -246,7 +246,7 @@ Fraud is only about 3.5% of rows. All models are trained to account for that imb
 
 We will not use SMOTE in the first benchmark because synthetic transactions can distort mixed categorical, time-ordered fraud data.
 
-## 9. How we select the winner
+## 9. How we compare the models and designate a champion
 
 Use validation data to select a model and threshold. Report every model with:
 
@@ -257,7 +257,7 @@ Use validation data to select a model and threshold. Report every model with:
 - training time, prediction latency, and artifact size;
 - calibration/reliability check before making approve/review/block decisions.
 
-After the model, feature set, and threshold are frozen, run the latest 15% holdout test once. Then retrain the selected architecture with fixed settings on the first 85% of historical data and save the deployment artifact.
+After each model's feature set and threshold are frozen, run the latest 15% holdout once. Save one approved, reload-tested deployment bundle per model. The strongest business result is labelled the champion, while the API loads all four bundles and returns four separate outputs.
 
 ## 10. Lightning AI execution plan
 
@@ -270,7 +270,9 @@ Recommended working pattern:
 3. Use persistent Studio storage for `data/processed/` and `artifacts/`; do not depend on temporary notebook memory.
 4. Use CPU for Logistic Regression and the first LightGBM run.
 5. Switch to a T4 only for CatBoost GPU and the neural network after data preparation is complete.
-6. Push source/docs/metrics to Git; do not push Kaggle data, API keys, or large model artifacts without an agreed artifact-storage method.
+6. Push source/docs/metrics to Git; upload approved model bundles to private Cloudflare R2 rather than normal Git history.
+
+The executable notebook order and owner assignments are in [LIGHTNING_TRAINING_GUIDE.md](LIGHTNING_TRAINING_GUIDE.md). Artifact formats are fixed in [MODEL_ARTIFACT_CONTRACT.md](MODEL_ARTIFACT_CONTRACT.md).
 
 ### Memory rule
 
@@ -288,7 +290,7 @@ Phase 6: compare metrics and feature importances
 Phase 7: add one feature group at a time and retest the leading models
 Phase 8: full versus reduced-feature comparison
 Phase 9: final holdout test, calibration, threshold selection, and artifact export
-Phase 10: API/dashboard/cloud deployment
+Phase 10: FastAPI on Render + React/Vite on Cloudflare Pages
 ```
 
 ## 12. Data-scientist working principles
@@ -302,4 +304,4 @@ Phase 10: API/dashboard/cloud deployment
 
 ## 13. Presentation-ready summary
 
-> “We compare four complementary approaches on the same time-aware fraud dataset: an interpretable linear baseline, two gradient-boosted-tree models, and an embedding-based tabular neural network. The shared pipeline combines transaction and device identity information, preserves missingness, handles high-cardinality card/device/email patterns safely, and prevents time leakage. We deploy the model that captures the most fraud within analyst capacity while meeting latency and explainability requirements.”
+> “We compare four complementary approaches on the same time-aware fraud dataset: an interpretable linear baseline, two gradient-boosted-tree models, and an embedding-based tabular neural network. The shared pipeline preserves missingness, handles high-cardinality signals safely, and prevents time leakage. One common transaction is transformed through four saved preprocessing contracts, and the application displays all four independent risks while clearly identifying the strongest validated model.”

@@ -1,9 +1,12 @@
 # Data and model artifacts
 data/raw/
 data/processed/
+artifacts/
 models/*.joblib
 models/*.pkl
 models/*.cbm
+models/*.pt
+models/*.txt
 
 # Secrets and local settings
 .env

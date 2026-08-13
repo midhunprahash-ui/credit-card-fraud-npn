@@ -450,4 +450,4 @@
 
 ## Features added later by our pipeline
 
-Notebook 01 adds the following derived features after this source-data dictionary: `has_identity`, `log_TransactionAmt`, `transaction_day`, `transaction_week`, `transaction_hour`, `is_weekend`, selected `<column>_missing` flags, `card1_card2`, `addr1_addr2`, and `email_pair`. Their detailed explanation is in [FEATURE_ENGINEERING_GUIDE.md](FEATURE_ENGINEERING_GUIDE.md).
+Lightning notebook 00 adds row-level derived features after this source-data dictionary: `has_identity`, amount transforms, missingness-family counts, relative time phases, `card_1_2`, `address_1_2`, and `email_pair`. Their exact definitions and model-specific representations are in [FEATURE_ENGINEERING_GUIDE.md](FEATURE_ENGINEERING_GUIDE.md).

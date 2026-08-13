@@ -11,8 +11,8 @@ Banks need to identify suspicious e-commerce payments quickly while avoiding unn
 | Input | Transaction, card, email, address, device, browser, and identity attributes |
 | Target | `isFraud` (`1` fraudulent, `0` legitimate) |
 | Output | Fraud probability, risk level, recommended action, and model explanation |
-| Primary model | CatBoost or LightGBM gradient-boosted decision-tree classifier |
-| Deployment target | Cloud-hosted FastAPI prediction API and Streamlit analyst dashboard |
+| Models shown | Logistic Regression, LightGBM, CatBoost, and tabular neural network |
+| Deployment target | FastAPI multi-model API on Render and React analyst dashboard on Cloudflare |
 
 ## Solution flow
 
@@ -25,11 +25,11 @@ Cleaning and feature engineering
         ↓
 Time-based train / validation / test split
         ↓
-Class-weighted fraud classifier
+Four class-weighted fraud classifiers
         ↓
-Saved model and feature schema
+Four saved model bundles and feature schemas
         ↓
-FastAPI scoring service → Streamlit analyst dashboard → Cloud deployment
+FastAPI four-model scoring service → React analyst dashboard → Cloud deployment
 ```
 
 ## Repository structure
@@ -43,10 +43,10 @@ credit-card-fraud-npn/
 ├── notebooks/            # Exploration and experiments
 ├── src/                  # Reusable data, features, training, evaluation code
 ├── api/                  # FastAPI service
-├── dashboard/            # Streamlit analyst dashboard
-├── models/               # Exported model artifacts; normally ignored by Git
+├── frontend/             # React/Vite analyst dashboard for Cloudflare Pages
+├── artifacts/            # Versioned model bundles; ignored by Git and uploaded to R2
 ├── tests/                # Automated checks
-├── requirements.txt      # Python dependencies
+├── requirements-training.txt # Lightning AI training dependencies
 ├── render.yaml           # Cloud deployment definition (when added)
 └── README.md             # This project entry point
 ```
@@ -108,15 +108,27 @@ For the complete source-column list after the transaction/identity left join—i
 
 The committed interactive report is available at [reports/eda/ieee_cis_train_left_join_profile.html](reports/eda/ieee_cis_train_left_join_profile.html). For its reproducible `ydata-profiling` workflow, memory-safe full-row command, and optional deeper sample report, see [docs/YDATA_PROFILING_GUIDE.md](docs/YDATA_PROFILING_GUIDE.md).
 
-The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md). The fixed four-model machine-learning lifecycle is in [docs/FOUR_MODEL_EXPERIMENT_PLAN.md](docs/FOUR_MODEL_EXPERIMENT_PLAN.md).
+The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md). The fixed four-model machine-learning lifecycle is in [docs/FOUR_MODEL_EXPERIMENT_PLAN.md](docs/FOUR_MODEL_EXPERIMENT_PLAN.md). Model bundle formats and the common four-model inference contract are defined in [docs/MODEL_ARTIFACT_CONTRACT.md](docs/MODEL_ARTIFACT_CONTRACT.md).
 
-## Google Colab training notebooks
+## Lightning AI training notebooks
 
-Run the notebooks in this order after opening them in Google Colab:
+Run the notebooks in this order inside a persistent Lightning AI Studio:
 
-1. `notebooks/01_colab_data_preparation.ipynb` — Kaggle API download, left join, shared features, and chronological splits.
-2. `notebooks/02_logistic_regression_baseline.ipynb` — interpretable baseline.
-3. `notebooks/03_lightgbm.ipynb` — boosted-tree benchmark.
-4. `notebooks/04_catboost.ipynb` — categorical-aware candidate for deployment.
+1. `notebooks/lightning_ai/00_shared_data_preparation.ipynb` — Kaggle API download, memory-safe left join, feature audit, and frozen chronological partitions.
+2. `notebooks/lightning_ai/01_logistic_regression.ipynb` — Nanda / Khishan.
+3. `notebooks/lightning_ai/02_lightgbm.ipynb` — Nebal / Ajmeer.
+4. `notebooks/lightning_ai/03_catboost.ipynb` — Midhun / Saravana.
+5. `notebooks/lightning_ai/04_tabular_neural_network.ipynb` — Mirdula / Hashvitha.
 
-The first notebook saves processed data to Google Drive under `MyDrive/ieee_fraud/processed`. The three model notebooks read it from there and save metrics/models under `MyDrive/ieee_fraud/artifacts`.
+The first notebook saves Git-ignored Parquet files under `data/processed/`. Each training notebook creates a versioned, Git-ignored bundle under `artifacts/<model>/<UTC-run-id>/`, performs a mandatory save/reload prediction test, and can optionally upload the run to private Cloudflare R2 storage.
+
+See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) before assigning notebooks to teammates. The older root-level Colab notebooks are superseded and must not be used for the final experiment.
+
+## Cloud architecture
+
+- **Training:** Lightning AI.
+- **Model storage:** private Cloudflare R2 bucket.
+- **Backend:** FastAPI on Render; loads all four models and scores one common input independently.
+- **Frontend:** React/Vite on Cloudflare Pages; displays four outputs side by side.
+
+See [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md).

@@ -72,7 +72,7 @@ The detailed source-column reference generated from the supplied files is in [DA
 
 ### Classification technique
 
-We use **supervised binary classification**. Gradient-boosted decision trees (CatBoost or LightGBM) are the planned main models because they are strong on wide tabular data, handle nonlinear relationships, and can work with missing values and categorical variables.
+We use **supervised binary classification**. We compare Logistic Regression, LightGBM, CatBoost, and an embedding-based tabular neural network. Gradient-boosted trees are the planned main deployment candidates because they are strong on wide tabular data, handle nonlinear relationships, and can work with missing values and categorical variables. The complete experiment design is in [FOUR_MODEL_EXPERIMENT_PLAN.md](FOUR_MODEL_EXPERIMENT_PLAN.md).
 
 ### Class imbalance
 

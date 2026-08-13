@@ -58,6 +58,8 @@ Features should be generated in `src/features.py` and used identically during tr
 
 The complete current implementation and explanation is in [FEATURE_ENGINEERING_GUIDE.md](FEATURE_ENGINEERING_GUIDE.md). It distinguishes features already implemented in Notebook 01 from planned improvements, so team members do not mistake future work for completed work.
 
+The detailed source-column reference generated from the supplied files is in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
+
 - Amount features: `log1p(TransactionAmt)`, amount bands, decimal component.
 - Time features: relative day, week, approximate hour, and weekend indicator from `TransactionDT`.
 - Device features: normalized device/browser strings and rare-category grouping.

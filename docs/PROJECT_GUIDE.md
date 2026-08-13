@@ -99,7 +99,7 @@ Use the Colab notebooks in the following order:
 | `03_lightgbm.ipynb` | Gradient-boosting benchmark | Metric JSON and LightGBM model |
 | `04_catboost.ipynb` | Categorical-aware candidate | Metric JSON, CatBoost model, feature schema |
 
-Before notebook 01, accept the Kaggle competition rules and download `kaggle.json` from Kaggle Settings → API. Upload that credential only to the temporary Colab session—never add it to Google Drive, the repository, or a notebook output.
+Before notebook 01, accept the Kaggle competition rules and create an API token in Kaggle Settings → API Tokens. In Colab, store it as a `KAGGLE_API_TOKEN` secret (key icon in the left sidebar) and allow the notebook access to that secret. Never add the token to Google Drive, the repository, a code cell, or a screenshot.
 
 ## 6. Application components
 

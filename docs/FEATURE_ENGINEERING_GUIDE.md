@@ -96,6 +96,19 @@ DeviceInfo = missing           → DeviceInfo_missing = 1
 
 This lets a model distinguish a true value from a value that is absent.
 
+### Why each current feature is worth creating
+
+| Transformation | Fraud question it helps answer | Why raw data alone is not enough |
+| --- | --- | --- |
+| `log_TransactionAmt` | “Is this unusually large relative to normal payment scale?” | Amounts are strongly right-skewed. A few very large payments can dominate the raw scale; the log feature compresses those extremes while retaining useful ordering. |
+| Day/week/hour features | “Does risk change by time period or shopping hour?” | `TransactionDT` is one large second count. Splitting it into day, week, and hour makes repeated calendar-like patterns easier for the model to learn. |
+| `is_weekend` | “Does weekend behavior have a different risk profile?” | This converts several day values into one simple business-pattern flag; a tree can use it without having to infer the grouping itself. |
+| `has_identity` | “Was a device/identity record available for this payment?” | A null identity field could mean either no identity row or an empty field within an identity row. This explicit flag makes the important distinction visible. |
+| Missingness flags | “Was potentially useful context unavailable?” | Replacing a null with a value alone loses the fact that it was absent. The flag preserves that fact, allowing the model to learn whether missing device, browser, or distance information changes risk. |
+| Card/address/email combinations | “Is this particular combination unusual or risky?” | The same card value can behave differently with different address, email, or card-detail combinations. Concatenation lets the model learn the relationship as one category. |
+
+These features do not declare that a particular value is fraudulent. They give the model structured signals which it tests against the known `isFraud` labels during training.
+
 ## 5. Cleaning before modelling
 
 The preparation notebook applies light, safe cleaning that is common to every model:
@@ -107,7 +120,28 @@ The preparation notebook applies light, safe cleaning that is common to every mo
 5. **Exclude `TransactionID` from model features.** It is a row identifier, not a meaningful business signal for deployment.
 6. **Sort by `TransactionDT`.** The first 70% is training data, the next 15% validation data, and the final 15% is the untouched test set.
 
+### Why each cleaning decision is made
+
+| Decision | Why it is done | What would go wrong otherwise |
+| --- | --- | --- |
+| Retain rows with null identity fields | Real scoring traffic can lack device/identity information, and absence can carry signal. | Dropping them removes ~75% of transactions and makes the trained model unrepresentative. |
+| Drop all-empty columns | They contain no observed information. | They consume memory and add no predictive value. |
+| Drop constant columns | Every row has the same value, so they cannot distinguish classes. | They add useless computation and clutter feature-importance output. |
+| Exclude `TransactionID` | It is an arbitrary row identifier, not a stable customer/payment behavior signal. | The model can learn accidental sequence effects that will not generalize to future transactions. |
+| Keep `isFraud` outside inputs | It is the answer we want the model to predict. | Including it would be direct target leakage and produce a meaningless score. |
+| Chronological split | Fraud patterns change over time, and production always predicts the future from the past. | A random split lets future patterns appear in training and gives overly optimistic evaluation. |
+
 The notebook does **not** globally fill every missing number with a median. That is intentional: LightGBM and CatBoost can work with numeric missing values, and the missingness flags preserve the fact that a value was absent. Logistic Regression performs median imputation inside its own pipeline because that model cannot accept missing values.
+
+### Null-value strategy and its reasoning
+
+| Situation | Current action | Why |
+| --- | --- | --- |
+| Numeric null in CatBoost or LightGBM | Leave as `NaN` | Both tree libraries can learn a separate split path for missing values, preserving the missingness signal. |
+| Categorical null | Replace with the string `MISSING` | A category needs a valid label; `MISSING` makes absence an explicit category rather than silently deleting the row. |
+| Numeric null for Logistic Regression | Median-impute within the training-fitted pipeline | Logistic Regression cannot train with `NaN`; median is robust to large outliers and is calculated from training data only. |
+| All-null column | Remove | There is no value or missingness variation to learn from. |
+| Very sparse column, e.g. >95% null | Keep for the first tree-model benchmark; evaluate later | Sparsity is not proof of uselessness. Some rare device/identity values can be highly predictive. |
 
 ## 6. High-cardinality categorical features
 
@@ -139,6 +173,8 @@ Training values for DeviceInfo:
 
 The model can then recognize common and rare patterns without creating one column per device. An unseen validation or test category becomes `0`.
 
+The reason this helps fraud detection is that rare card/device/email combinations may behave differently from common ones. Frequency is only one signal: a rare value is not automatically fraud, but it gives the model useful context when combined with amount, time, and identity features.
+
 ### Why “training-only” matters
 
 The frequency map is calculated from training rows only, then applied to validation/test rows.
@@ -167,6 +203,8 @@ The business features are shared. The preprocessing applied immediately before e
 | Categorical features | Frequency-encoded to numeric values | Frequency-encoded to numeric values | Text/object categoricals passed directly to CatBoost |
 | Numeric scaling | StandardScaler | Not required | Not required |
 | Imbalance handling | `class_weight="balanced"` | `scale_pos_weight` | `class_weights` |
+
+The differences are requirements of the algorithms, not different business logic. All models receive the same underlying amount, time, identity, missingness, and combination signals.
 
 ### Logistic Regression
 

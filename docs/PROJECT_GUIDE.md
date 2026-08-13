@@ -56,6 +56,8 @@ Only some transactions have identity records. An inner join would drop every tra
 
 Features should be generated in `src/features.py` and used identically during training and prediction.
 
+The complete current implementation and explanation is in [FEATURE_ENGINEERING_GUIDE.md](FEATURE_ENGINEERING_GUIDE.md). It distinguishes features already implemented in Notebook 01 from planned improvements, so team members do not mistake future work for completed work.
+
 - Amount features: `log1p(TransactionAmt)`, amount bands, decimal component.
 - Time features: relative day, week, approximate hour, and weekend indicator from `TransactionDT`.
 - Device features: normalized device/browser strings and rare-category grouping.

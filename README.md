@@ -106,6 +106,8 @@ For a simple explanation of every feature, preprocessing rule, high-cardinality 
 
 For the complete source-column list after the transaction/identity left join—including real example values, missingness, data types, and the honest interpretation available for anonymized fields—see [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md).
 
+The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md).
+
 ## Google Colab training notebooks
 
 Run the notebooks in this order after opening them in Google Colab:

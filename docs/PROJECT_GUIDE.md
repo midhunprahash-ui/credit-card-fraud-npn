@@ -100,10 +100,10 @@ Use the finalized notebooks in the following order:
 | Notebook | Purpose | Output |
 | --- | --- | --- |
 | `notebooks/lightning_ai/00_shared_data_preparation.ipynb` | Kaggle download, left join, feature audit, chronological split | Processed Parquet and shared schemas |
-| `notebooks/lightning_ai/01_logistic_regression.ipynb` | Nanda / Khishan linear baseline | Complete Joblib pipeline and metrics |
-| `notebooks/lightning_ai/02_lightgbm.ipynb` | Nebal / Ajmeer tree benchmark | Native LightGBM model, preprocessor, metrics |
-| `notebooks/lightning_ai/03_catboost.ipynb` | Midhun / Saravana categorical model | Native CatBoost model, preprocessor, metrics |
-| `notebooks/lightning_ai/04_tabular_neural_network.ipynb` | Mirdula / Hashvitha embedding model | PyTorch state dictionary, preprocessor, metrics |
+| `notebooks/lightning_ai/01_logistic_regression_nanda_khishan.ipynb` | Nanda / Khishan linear baseline | Complete Joblib pipeline and metrics |
+| `notebooks/lightning_ai/02_lightgbm_nebal_ajmeer.ipynb` | Nebal / Ajmeer tree benchmark | Native LightGBM model, preprocessor, metrics |
+| `notebooks/lightning_ai/03_catboost_midhun_saravana.ipynb` | Midhun / Saravana categorical model | Native CatBoost model, preprocessor, metrics |
+| `notebooks/lightning_ai/04_tabular_neural_network_mirdula_hashvitha.ipynb` | Mirdula / Hashvitha embedding model | PyTorch state dictionary, preprocessor, metrics |
 
 Before notebook 00, accept the Kaggle competition rules and create an API token. Store it as a Lightning secret named `KAGGLE_API_TOKEN`. Never add the token to the repository, a code cell, or a screenshot. See [LIGHTNING_TRAINING_GUIDE.md](LIGHTNING_TRAINING_GUIDE.md).
 

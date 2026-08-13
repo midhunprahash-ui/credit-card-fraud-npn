@@ -543,7 +543,7 @@ def build_logistic_notebook() -> None:
         main metric, and why the validation threshold is reused unchanged on the holdout.
         '''),
     ]
-    write_notebook("01_logistic_regression.ipynb", cells)
+    write_notebook("01_logistic_regression_nanda_khishan.ipynb", cells)
 
 
 def build_lightgbm_notebook() -> None:
@@ -700,7 +700,7 @@ def build_lightgbm_notebook() -> None:
         unnecessary for decision trees.
         '''),
     ]
-    write_notebook("02_lightgbm.ipynb", cells)
+    write_notebook("02_lightgbm_nebal_ajmeer.ipynb", cells)
 
 
 def build_catboost_notebook() -> None:
@@ -855,7 +855,7 @@ def build_catboost_notebook() -> None:
         scaling, and how the native model plus saved preprocessor reaches the API.
         '''),
     ]
-    write_notebook("03_catboost.ipynb", cells)
+    write_notebook("03_catboost_midhun_saravana.ipynb", cells)
 
 
 def build_neural_notebook() -> None:
@@ -1097,7 +1097,7 @@ def build_neural_notebook() -> None:
         standardized inputs, mixed precision, dropout, and early stopping on validation PR-AUC.
         '''),
     ]
-    write_notebook("04_tabular_neural_network.ipynb", cells)
+    write_notebook("04_tabular_neural_network_mirdula_hashvitha.ipynb", cells)
 
 
 def main() -> None:

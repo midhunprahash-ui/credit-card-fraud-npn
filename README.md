@@ -102,6 +102,8 @@ Data will be split chronologically using `TransactionDT`, not randomly, to preve
 
 See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for the detailed project plan and handover guide.
 
+For a simple explanation of every feature, preprocessing rule, high-cardinality handling method, and model-specific difference, see [docs/FEATURE_ENGINEERING_GUIDE.md](docs/FEATURE_ENGINEERING_GUIDE.md).
+
 ## Google Colab training notebooks
 
 Run the notebooks in this order after opening them in Google Colab:

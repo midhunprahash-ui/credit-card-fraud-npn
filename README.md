@@ -101,3 +101,14 @@ Data will be split chronologically using `TransactionDT`, not randomly, to preve
 7. Run tests before committing changes and record experiment settings and metrics so results can be reproduced.
 
 See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for the detailed project plan and handover guide.
+
+## Google Colab training notebooks
+
+Run the notebooks in this order after opening them in Google Colab:
+
+1. `notebooks/01_colab_data_preparation.ipynb` — Kaggle API download, left join, shared features, and chronological splits.
+2. `notebooks/02_logistic_regression_baseline.ipynb` — interpretable baseline.
+3. `notebooks/03_lightgbm.ipynb` — boosted-tree benchmark.
+4. `notebooks/04_catboost.ipynb` — categorical-aware candidate for deployment.
+
+The first notebook saves processed data to Google Drive under `MyDrive/ieee_fraud/processed`. The three model notebooks read it from there and save metrics/models under `MyDrive/ieee_fraud/artifacts`.

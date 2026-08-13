@@ -86,6 +86,19 @@ Latest 15%   → final untouched evaluation
 
 Any frequency or historical feature must be fitted using training data only before it is applied to validation and test rows.
 
+### Google Colab notebook run order
+
+Use the Colab notebooks in the following order:
+
+| Notebook | Purpose | Output |
+| --- | --- | --- |
+| `01_colab_data_preparation.ipynb` | Kaggle API download, data join, common features, chronological split | Google Drive processed parquet files and metadata |
+| `02_logistic_regression_baseline.ipynb` | Simple linear benchmark | Baseline metric JSON |
+| `03_lightgbm.ipynb` | Gradient-boosting benchmark | Metric JSON and LightGBM model |
+| `04_catboost.ipynb` | Categorical-aware candidate | Metric JSON, CatBoost model, feature schema |
+
+Before notebook 01, accept the Kaggle competition rules and download `kaggle.json` from Kaggle Settings → API. Upload that credential only to the temporary Colab session—never add it to Google Drive, the repository, or a notebook output.
+
 ## 6. Application components
 
 ### FastAPI (`api/`)

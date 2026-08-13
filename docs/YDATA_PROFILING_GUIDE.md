@@ -50,6 +50,12 @@ The output is:
 reports/generated/ieee_cis_train_left_join_profile.html
 ```
 
+A validated reference copy is committed at:
+
+```text
+reports/eda/ieee_cis_train_left_join_profile.html
+```
+
 Open that file in Lightning Studio's file browser and download it, or serve it
 temporarily from the repository root:
 

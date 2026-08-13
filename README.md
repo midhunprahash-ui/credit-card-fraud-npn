@@ -104,6 +104,8 @@ See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for the detailed project plan
 
 For a simple explanation of every feature, preprocessing rule, high-cardinality handling method, and model-specific difference, see [docs/FEATURE_ENGINEERING_GUIDE.md](docs/FEATURE_ENGINEERING_GUIDE.md).
 
+For the complete source-column list after the transaction/identity left join—including real example values, missingness, data types, and the honest interpretation available for anonymized fields—see [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md).
+
 ## Google Colab training notebooks
 
 Run the notebooks in this order after opening them in Google Colab:

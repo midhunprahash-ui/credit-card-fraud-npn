@@ -21,3 +21,6 @@ venv/
 # Application-generated files
 *.log
 .streamlit/secrets.toml
+
+# Generated EDA reports (large, reproducible artifacts)
+reports/generated/

@@ -1,0 +1,4 @@
+pandas>=2.2,<3.0
+pyarrow>=16,<22
+setuptools>=70,<81
+ydata-profiling>=4.12,<5.0

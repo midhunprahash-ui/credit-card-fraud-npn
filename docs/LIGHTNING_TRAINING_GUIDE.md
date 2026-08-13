@@ -20,18 +20,21 @@ not be changed independently by one model team.
 ## 2. Create the Lightning Studio
 
 1. Create a persistent Lightning AI Studio.
-2. Clone the repository and switch to `develop`.
+2. Clone the repository and switch to the stable `main` branch.
 3. Use Python 3.11 where possible.
 4. Accept the IEEE-CIS Kaggle competition rules.
-5. Add `KAGGLE_API_TOKEN` as a Lightning secret/environment variable.
-6. Never paste or print the token in a notebook.
+5. In Lightning AI, open the profile menu and choose **Global settings → Secrets → New Secret**.
+6. Enter `KAGGLE_API_TOKEN` as the secret name and paste the Kaggle token as its value.
+7. Save the secret, then restart the Studio terminal and notebook kernel so it becomes available.
+8. Never paste or print the token in a notebook.
 
 Suggested clone commands:
 
 ```bash
 git clone https://github.com/midhunprahash-ui/credit-card-fraud-npn.git
 cd credit-card-fraud-npn
-git switch develop
+git switch main
+git pull origin main
 ```
 
 ## 3. Run order

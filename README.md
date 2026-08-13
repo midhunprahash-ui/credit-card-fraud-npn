@@ -115,14 +115,14 @@ The project is being built against the hackathon expectations captured in [docs/
 Run the notebooks in this order inside a persistent Lightning AI Studio:
 
 1. `notebooks/lightning_ai/00_shared_data_preparation.ipynb` — Kaggle API download, memory-safe left join, feature audit, and frozen chronological partitions.
-2. `notebooks/lightning_ai/01_logistic_regression.ipynb` — Nanda / Khishan.
-3. `notebooks/lightning_ai/02_lightgbm.ipynb` — Nebal / Ajmeer.
-4. `notebooks/lightning_ai/03_catboost.ipynb` — Midhun / Saravana.
-5. `notebooks/lightning_ai/04_tabular_neural_network.ipynb` — Mirdula / Hashvitha.
+2. `notebooks/lightning_ai/01_logistic_regression_nanda_khishan.ipynb` — Nanda / Khishan.
+3. `notebooks/lightning_ai/02_lightgbm_nebal_ajmeer.ipynb` — Nebal / Ajmeer.
+4. `notebooks/lightning_ai/03_catboost_midhun_saravana.ipynb` — Midhun / Saravana.
+5. `notebooks/lightning_ai/04_tabular_neural_network_mirdula_hashvitha.ipynb` — Mirdula / Hashvitha.
 
 The first notebook saves Git-ignored Parquet files under `data/processed/`. Each training notebook creates a versioned, Git-ignored bundle under `artifacts/<model>/<UTC-run-id>/`, performs a mandatory save/reload prediction test, and can optionally upload the run to private Cloudflare R2 storage.
 
-See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) before assigning notebooks to teammates. The older root-level Colab notebooks are superseded and must not be used for the final experiment.
+Share [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md) with model owners for the shortest step-by-step instructions. See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) for the full technical runbook. The older root-level Colab notebooks are superseded and must not be used for the final experiment.
 
 ## Cloud architecture
 

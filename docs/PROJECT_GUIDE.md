@@ -4,7 +4,7 @@ This document explains the whole project in simple terms. Keep it updated as the
 
 ## 1. What we are building
 
-We are building a cloud-hosted application that helps fraud analysts prioritize suspicious online payment transactions. A user can score one transaction or upload a batch. The system returns a risk score, a risk category, a recommended action, and the main signals that influenced the result.
+We are building a cloud-hosted application that helps fraud analysts prioritize suspicious online payment transactions. A user can score one transaction or upload a batch. The same input is sent through four independently trained models, and the system displays four probabilities, classifications, thresholds, and explanations side by side.
 
 This is a demonstration system trained on anonymized historical data. The dashboard's live activity is simulated; it is not connected to a bank payment network.
 
@@ -17,24 +17,26 @@ The original data has two tables:
 - **Transaction table:** payment amount, card-related fields, addresses, email domains, and anonymous `V`/`C`/`D` variables.
 - **Identity table:** device type, browser, operating system, screen information, and anonymous `id_` variables.
 
-The common identifier is `TransactionID`. In the deployed form, fields not supplied by an analyst are filled with the training-time missing-value defaults.
+The common identifier is `TransactionID`. In the deployed form, omitted optional fields are normalized as missing; each saved model preprocessor then applies its own training-fitted missing-value behavior.
 
 ### Output
 
-The API returns a JSON response with the fraud probability and action. Example:
+The API returns a JSON response with all four fraud probabilities. Simplified example:
 
 ```json
 {
   "transaction_id": "demo-001",
-  "fraud_probability": 0.82,
-  "prediction": "FRAUD",
-  "risk_level": "HIGH",
-  "recommended_action": "MANUAL_REVIEW",
-  "model_version": "v1.0.0"
+  "models": {
+    "logistic_regression": {"fraud_probability": 0.61, "prediction": 0},
+    "lightgbm": {"fraud_probability": 0.84, "prediction": 1},
+    "catboost": {"fraud_probability": 0.91, "prediction": 1},
+    "neural_network": {"fraud_probability": 0.78, "prediction": 1}
+  },
+  "agreement": "STRONG_FRAUD_AGREEMENT"
 }
 ```
 
-The dashboard translates this into a prioritized queue for an analyst.
+The React dashboard translates this into model cards and a prioritized analyst queue.
 
 ## 3. Data pipeline
 
@@ -42,9 +44,10 @@ The dashboard translates this into a prioritized queue for an analyst.
 2. Validate expected columns and duplicate `TransactionID` values.
 3. Left-join identity data to transaction data using `TransactionID`.
 4. Mark whether identity data is present (`has_identity`).
-5. Handle missing values consistently:
-   - numeric values: median imputation;
-   - categorical values: `MISSING` category.
+5. Preserve missingness and apply model-specific handling:
+   - Logistic/Neural numeric values: training median plus missing indicator;
+   - LightGBM/CatBoost numeric values: retain `NaN`;
+   - categorical values: explicit `MISSING` category.
 6. Drop empty, constant, and proven-unhelpful duplicate columns.
 7. Write reusable processed data to `data/processed/`.
 
@@ -61,7 +64,7 @@ The complete current implementation and explanation is in [FEATURE_ENGINEERING_G
 The detailed source-column reference generated from the supplied files is in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
 
 - Amount features: `log1p(TransactionAmt)`, amount bands, decimal component.
-- Time features: relative day, week, approximate hour, and weekend indicator from `TransactionDT`.
+- Time features: relative day, week, and periodic hour phase from `TransactionDT`; the undisclosed origin does not justify a real weekend label.
 - Device features: normalized device/browser strings and rare-category grouping.
 - Composite features: card combinations, address combinations, and payer/receiver email pairs.
 - Frequency encoding: occurrence count of high-cardinality values such as cards, device, address, and email domain.
@@ -90,18 +93,19 @@ Latest 15%   → final untouched evaluation
 
 Any frequency or historical feature must be fitted using training data only before it is applied to validation and test rows.
 
-### Google Colab notebook run order
+### Lightning AI notebook run order
 
-Use the Colab notebooks in the following order:
+Use the finalized notebooks in the following order:
 
 | Notebook | Purpose | Output |
 | --- | --- | --- |
-| `01_colab_data_preparation.ipynb` | Kaggle API download, data join, common features, chronological split | Google Drive processed parquet files and metadata |
-| `02_logistic_regression_baseline.ipynb` | Simple linear benchmark | Baseline metric JSON |
-| `03_lightgbm.ipynb` | Gradient-boosting benchmark | Metric JSON and LightGBM model |
-| `04_catboost.ipynb` | Categorical-aware candidate | Metric JSON, CatBoost model, feature schema |
+| `notebooks/lightning_ai/00_shared_data_preparation.ipynb` | Kaggle download, left join, feature audit, chronological split | Processed Parquet and shared schemas |
+| `notebooks/lightning_ai/01_logistic_regression.ipynb` | Nanda / Khishan linear baseline | Complete Joblib pipeline and metrics |
+| `notebooks/lightning_ai/02_lightgbm.ipynb` | Nebal / Ajmeer tree benchmark | Native LightGBM model, preprocessor, metrics |
+| `notebooks/lightning_ai/03_catboost.ipynb` | Midhun / Saravana categorical model | Native CatBoost model, preprocessor, metrics |
+| `notebooks/lightning_ai/04_tabular_neural_network.ipynb` | Mirdula / Hashvitha embedding model | PyTorch state dictionary, preprocessor, metrics |
 
-Before notebook 01, accept the Kaggle competition rules and create an API token in Kaggle Settings → API Tokens. In Colab, store it as a `KAGGLE_API_TOKEN` secret (key icon in the left sidebar) and allow the notebook access to that secret. Never add the token to Google Drive, the repository, a code cell, or a screenshot.
+Before notebook 00, accept the Kaggle competition rules and create an API token. Store it as a Lightning secret named `KAGGLE_API_TOKEN`. Never add the token to the repository, a code cell, or a screenshot. See [LIGHTNING_TRAINING_GUIDE.md](LIGHTNING_TRAINING_GUIDE.md).
 
 ## 6. Application components
 
@@ -109,31 +113,32 @@ Before notebook 01, accept the Kaggle competition rules and create an API token 
 
 Responsibilities:
 
-- Load the saved model once at startup.
+- Download, verify, and load all four approved model bundles once at startup.
 - Validate request data.
 - Generate features using the same logic as training.
 - Return a fraud score, risk band, and action.
 - Expose `/health`, `/predict`, `/predict-batch`, and `/model-metrics`.
 
-### Streamlit (`dashboard/`)
+### React/Vite frontend (`frontend/`)
 
 Responsibilities:
 
 - Single-transaction scoring form.
 - Batch upload and prioritized fraud queue.
-- Key performance metrics and score distributions.
-- Transaction explanation / top risk signals.
+- Four side-by-side model probabilities and decisions.
+- Key performance metrics, input completeness, and explanations.
 
 ## 7. Cloud deployment plan
 
-We plan to use Render from this Git repository:
+The finalized platform split is:
 
-- FastAPI is a Render web service.
-- Streamlit is a second Render web service.
-- Both use environment variables for configuration.
-- An optional Postgres database can store reviewer decisions and audit events.
+- Lightning AI trains the four models.
+- Private Cloudflare R2 stores approved versioned model bundles.
+- FastAPI runs as a containerized Render web service and loads all four models.
+- React/Vite is deployed to Cloudflare Pages.
+- GitHub `main` triggers finalized deployments.
 
-Before deployment, the model file must be available to the API service. For the hackathon, a versioned model artifact can be included if its size permits, or retrieved from secure object storage during build/deploy.
+See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) and [MODEL_ARTIFACT_CONTRACT.md](MODEL_ARTIFACT_CONTRACT.md).
 
 ## 8. Security and responsible-demo rules
 
@@ -151,7 +156,7 @@ Before deployment, the model file must be available to the API service. For the 
 | Baseline | A reproducible model has time-based ROC-AUC and PR-AUC metrics |
 | Improved model | Feature engineering and tuned model outperform baseline |
 | API | Local `/health` and `/predict` work against saved model |
-| Dashboard | Analyst can score and review transactions locally |
+| Frontend | Analyst can score and compare all four model results locally |
 | Deployment | Public cloud URLs work and deployment is documented |
 | Handover | README, setup guide, model metrics, and demo flow are current |
 

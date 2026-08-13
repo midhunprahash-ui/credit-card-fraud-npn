@@ -31,7 +31,7 @@ Before the final submission, verify that the solution demonstrates:
 - Real-time decision capability: a transaction score returns quickly with probability, risk level, and action.
 - Monitoring: dashboard shows score distribution, high-risk volume, model metrics, and reviewer outcomes where available.
 - Performance evidence: ROC-AUC, PR-AUC, precision/recall, and an analyst-capacity metric such as recall at top 10% of alerts.
-- Integration alternatives: FastAPI can be consumed by the Streamlit dashboard now and by a future bank/payment system through JSON APIs.
+- Integration alternatives: FastAPI is consumed by the React/Cloudflare dashboard and can later be integrated with a bank/payment system through the same JSON contract.
 - Reusability: preprocessing and prediction contracts are versioned; model/schema can be replaced without redesigning the UI.
 - Ease of implementation: the MVP uses a small number of cloud services and documented deployment steps.
 

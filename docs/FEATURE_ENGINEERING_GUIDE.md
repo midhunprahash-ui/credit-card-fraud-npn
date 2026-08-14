@@ -157,6 +157,11 @@ Embeddings are concatenated with numeric inputs and passed through dense layers
 
 ## 8. Leakage prevention
 
+The complete class-imbalance and leakage-control explanation, including the
+chronological safety boundary, model-specific weights, test-set rule, teammate
+checklist, and interview answer, is in
+[`CLASS_IMBALANCE_AND_DATA_LEAKAGE.md`](CLASS_IMBALANCE_AND_DATA_LEAKAGE.md).
+
 The following objects are fitted using training rows only:
 
 - numerical medians, means, and standard deviations;

@@ -27,3 +27,7 @@ venv/
 
 # Generated EDA reports (large, reproducible artifacts)
 reports/generated/
+reports/eda/ieee_cis_train_left_join_profile.html
+
+# Local browser-friendly documentation exports
+docs/TEAMMATE_TRAINING_GUIDE.html

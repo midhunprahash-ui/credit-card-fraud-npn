@@ -8,8 +8,8 @@ Parquet partitions.
 | --- | --- | --- |
 | `00_shared_data_preparation.ipynb` | Entire team | CPU, 24–32 GB RAM preferred |
 | `01_logistic_regression_nanda_khishan.ipynb` | Nanda / Khishan | CPU, high RAM |
-| `02_lightgbm_nebal_ajmeer.ipynb` | Nebal / Ajmeer | CPU first; GPU optional |
-| `03_catboost_midhun_saravana.ipynb` | Midhun / Saravana | T4 GPU or CPU |
+| `02_lightgbm_saravana_nebal.ipynb` | Saravana / Nebal | CPU first; GPU optional |
+| `03_catboost_midhun_ajmeer.ipynb` | Midhun / Ajmeer | T4 GPU or CPU |
 | `04_tabular_neural_network_mirdula_hashvitha.ipynb` | Mirdula / Hashvitha | T4 GPU, high RAM |
 
 Before running, accept the Kaggle competition rules and add

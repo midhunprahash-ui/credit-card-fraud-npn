@@ -9,8 +9,8 @@ the IEEE-CIS labelled training data.
 | --- | --- | --- |
 | Shared preparation | Entire team | One join, feature audit, and frozen chronological partitions |
 | Logistic Regression | Nanda / Khishan | Interpretable baseline |
-| LightGBM | Nebal / Ajmeer | Efficient nonlinear tree benchmark |
-| CatBoost | Midhun / Saravana | Native categorical deployment candidate |
+| LightGBM | Saravana / Nebal | Efficient nonlinear tree benchmark |
+| CatBoost | Midhun / Ajmeer | Native categorical deployment candidate |
 | Tabular neural network | Mirdula / Hashvitha | Embedding-based deep-learning benchmark |
 
 Ownership means running the notebook, recording issues, interpreting the

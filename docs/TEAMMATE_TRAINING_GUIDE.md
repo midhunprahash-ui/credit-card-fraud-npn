@@ -8,8 +8,8 @@ official final run and share the result ZIP with Midhun.
 | Team | Notebook | Machine |
 | --- | --- | --- |
 | Nanda / Khishan | `01_logistic_regression_nanda_khishan.ipynb` | High-memory CPU |
-| Nebal / Ajmeer | `02_lightgbm_nebal_ajmeer.ipynb` | High-memory CPU |
-| Midhun / Saravana | `03_catboost_midhun_saravana.ipynb` | T4 GPU |
+| Saravana / Nebal | `02_lightgbm_saravana_nebal.ipynb` | High-memory CPU |
+| Midhun / Ajmeer | `03_catboost_midhun_ajmeer.ipynb` | T4 GPU |
 | Mirdula / Hashvitha | `04_tabular_neural_network_mirdula_hashvitha.ipynb` | T4 GPU |
 
 All notebooks are inside `notebooks/lightning_ai/`.

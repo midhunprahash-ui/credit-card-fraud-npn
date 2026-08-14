@@ -551,7 +551,7 @@ def build_lightgbm_notebook() -> None:
         md(r'''
         # 02 — LightGBM benchmark
 
-        **Owners:** Nebal / Ajmeer  
+        **Owners:** Saravana / Nebal
         **Role:** high-performance nonlinear tree benchmark
 
         Interview explanation: *“LightGBM learns nonlinear thresholds and interactions in
@@ -700,7 +700,7 @@ def build_lightgbm_notebook() -> None:
         unnecessary for decision trees.
         '''),
     ]
-    write_notebook("02_lightgbm_nebal_ajmeer.ipynb", cells)
+    write_notebook("02_lightgbm_saravana_nebal.ipynb", cells)
 
 
 def build_catboost_notebook() -> None:
@@ -708,7 +708,7 @@ def build_catboost_notebook() -> None:
         md(r'''
         # 03 — CatBoost categorical-aware model
 
-        **Owners:** Midhun / Saravana  
+        **Owners:** Midhun / Ajmeer
         **Role:** primary mixed-type deployment candidate
 
         Interview explanation: *“CatBoost is designed for categorical tabular data. Its
@@ -855,7 +855,7 @@ def build_catboost_notebook() -> None:
         scaling, and how the native model plus saved preprocessor reaches the API.
         '''),
     ]
-    write_notebook("03_catboost_midhun_saravana.ipynb", cells)
+    write_notebook("03_catboost_midhun_ajmeer.ipynb", cells)
 
 
 def build_neural_notebook() -> None:

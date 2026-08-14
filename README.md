@@ -122,7 +122,7 @@ Run the notebooks in this order inside a persistent Lightning AI Studio:
 
 The first notebook saves Git-ignored Parquet files under `data/processed/`. Each training notebook creates a versioned, Git-ignored bundle under `artifacts/<model>/<UTC-run-id>/`, performs a mandatory save/reload prediction test, and can optionally upload the run to private Cloudflare R2 storage.
 
-Share the browser-friendly [HTML teammate training guide](docs/TEAMMATE_TRAINING_GUIDE.html) with model owners; every command has a copy button. A Markdown copy is available at [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md). See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) for the full technical runbook. The older root-level Colab notebooks are superseded and must not be used for the final experiment.
+Share the browser-friendly [HTML teammate training guide](docs/TEAMMATE_TRAINING_GUIDE.html) with model owners; every command has a copy button. A Markdown copy is available at [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md). See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) for the complete training guide.
 
 ## Cloud architecture
 

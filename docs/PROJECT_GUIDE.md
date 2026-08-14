@@ -81,6 +81,10 @@ We use **supervised binary classification**. We compare Logistic Regression, Lig
 
 Fraud is a small share of transactions. The model will use class weights (`scale_pos_weight` for LightGBM or `class_weights` for CatBoost) instead of trusting accuracy or oversampling by default.
 
+All four implemented treatments and the reasoning for avoiding synthetic SMOTE
+rows are documented in
+[`CLASS_IMBALANCE_AND_DATA_LEAKAGE.md`](CLASS_IMBALANCE_AND_DATA_LEAKAGE.md).
+
 ### Preventing data leakage
 
 Split data by transaction time:
@@ -92,6 +96,10 @@ Latest 15%   → final untouched evaluation
 ```
 
 Any frequency or historical feature must be fitted using training data only before it is applied to validation and test rows.
+
+Use the acceptance checklist in
+[`CLASS_IMBALANCE_AND_DATA_LEAKAGE.md`](CLASS_IMBALANCE_AND_DATA_LEAKAGE.md)
+before approving any model bundle.
 
 ### Lightning AI notebook run order
 

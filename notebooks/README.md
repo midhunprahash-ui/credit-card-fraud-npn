@@ -1,8 +1,7 @@
-# Notebook status
+# Notebooks
 
-Use only the notebooks under `notebooks/lightning_ai/` for the finalized
-four-model experiment.
+All notebooks used by the team are inside `notebooks/lightning_ai/`.
 
-The older root-level Colab notebooks are retained temporarily as historical
-references. They do not contain the finalized neural-network approach, common
-artifact contract, R2 upload flow, or corrected memory/cardinality handling.
+Start with `00_shared_data_preparation.ipynb`, then run the notebook assigned
+to your model team. The simple instructions are in
+`docs/TEAMMATE_TRAINING_GUIDE.html`.

@@ -112,6 +112,8 @@ The interactive profiling HTML is kept as a local, Git-ignored generated artifac
 
 The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md). The fixed four-model machine-learning lifecycle is in [docs/FOUR_MODEL_EXPERIMENT_PLAN.md](docs/FOUR_MODEL_EXPERIMENT_PLAN.md). Model bundle formats and the common four-model inference contract are defined in [docs/MODEL_ARTIFACT_CONTRACT.md](docs/MODEL_ARTIFACT_CONTRACT.md).
 
+The finalized four-model results and champion rationale are in [docs/FINAL_MODEL_SELECTION.md](docs/FINAL_MODEL_SELECTION.md). Machine-readable approved run IDs are frozen in [config/model_registry.json](config/model_registry.json).
+
 ## Lightning AI training notebooks
 
 Run the notebooks in this order inside a persistent Lightning AI Studio:

@@ -9,6 +9,7 @@ from catboost import CatBoostClassifier, Pool
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
+from src.fraud_pipeline.artifacts import build_manifest, write_json
 from src.fraud_pipeline.neural import FraudTabularNetwork, network_from_config
 from src.fraud_pipeline.preprocessing import (
     CatBoostPreprocessor,
@@ -107,3 +108,12 @@ def test_neural_state_dictionary_round_trip(tmp_path: Path) -> None:
     with torch.inference_mode():
         actual = loaded(torch.from_numpy(numeric), torch.from_numpy(categorical))
     torch.testing.assert_close(expected, actual)
+
+
+def test_manifest_never_checksums_itself(tmp_path: Path) -> None:
+    (tmp_path / "model.txt").write_text("model")
+    write_json(tmp_path / "manifest.json", {"old": "manifest"})
+
+    manifest = build_manifest(tmp_path)
+
+    assert [item["path"] for item in manifest["files"]] == ["model.txt"]

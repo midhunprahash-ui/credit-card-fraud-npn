@@ -39,6 +39,10 @@ from the private R2 bucket and verify their manifest checksums.
 - `manifest.json`: file sizes and SHA-256 checksums.
 - validation/test predictions: enables fair comparison and a later validated ensemble.
 
+`manifest.json` deliberately does not checksum itself. A file cannot contain a
+stable checksum of its own final contents. Every other file in the run bundle is
+covered by the manifest.
+
 ## Versioned storage
 
 Training runs are immutable:
@@ -63,6 +67,11 @@ After comparison, a registry points to one approved run per model:
 
 The backend loads all four at startup. It never downloads or deserializes an
 artifact supplied by an application user.
+
+The approved run IDs and measured results are frozen in
+[`../config/model_registry.json`](../config/model_registry.json). The human-readable
+selection rationale is in
+[`FINAL_MODEL_SELECTION.md`](FINAL_MODEL_SELECTION.md).
 
 ## Common API output
 

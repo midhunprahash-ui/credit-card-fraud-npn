@@ -116,6 +116,11 @@ The finalized four-model results and champion rationale are in [docs/FINAL_MODEL
 
 ## Lightning AI training notebooks
 
+The original notebooks below remain the fixed Version 1 baseline. The additive
+behavioral Version 2 suite, teammate assignments, run order, and result packaging are
+documented in [notebooks/lightning_ai/v2/README.md](notebooks/lightning_ai/v2/README.md)
+and [docs/VERSION_2_TRAINING_GUIDE.md](docs/VERSION_2_TRAINING_GUIDE.md).
+
 Run the notebooks in this order inside a persistent Lightning AI Studio:
 
 1. `notebooks/lightning_ai/00_shared_data_preparation.ipynb` — Kaggle API download, memory-safe left join, feature audit, and frozen chronological partitions.

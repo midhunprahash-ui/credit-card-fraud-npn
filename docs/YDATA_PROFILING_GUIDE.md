@@ -50,7 +50,7 @@ The output is:
 reports/generated/ieee_cis_train_left_join_profile.html
 ```
 
-A validated reference copy is committed at:
+A local reference copy may also be kept at:
 
 ```text
 reports/eda/ieee_cis_train_left_join_profile.html
@@ -63,9 +63,9 @@ temporarily from the repository root:
 python -m http.server 8000
 ```
 
-Then open the Studio port URL and navigate to the report. Generated reports are
-ignored by Git because they are large and can always be recreated from the
-script.
+Then open the Studio port URL and navigate to the report. Both generated and
+local reference HTML reports are ignored by Git because they are large and can
+always be recreated from the script.
 
 ## Optional deeper report on a representative sample
 

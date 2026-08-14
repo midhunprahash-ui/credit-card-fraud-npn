@@ -108,7 +108,7 @@ For the implemented class-imbalance strategy, chronological leakage controls, mo
 
 For the complete source-column list after the transaction/identity left join—including real example values, missingness, data types, and the honest interpretation available for anonymized fields—see [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md).
 
-The committed interactive report is available at [reports/eda/ieee_cis_train_left_join_profile.html](reports/eda/ieee_cis_train_left_join_profile.html). For its reproducible `ydata-profiling` workflow, memory-safe full-row command, and optional deeper sample report, see [docs/YDATA_PROFILING_GUIDE.md](docs/YDATA_PROFILING_GUIDE.md).
+The interactive profiling HTML is kept as a local, Git-ignored generated artifact. For its reproducible `ydata-profiling` workflow, memory-safe full-row command, and optional deeper sample report, see [docs/YDATA_PROFILING_GUIDE.md](docs/YDATA_PROFILING_GUIDE.md).
 
 The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md). The fixed four-model machine-learning lifecycle is in [docs/FOUR_MODEL_EXPERIMENT_PLAN.md](docs/FOUR_MODEL_EXPERIMENT_PLAN.md). Model bundle formats and the common four-model inference contract are defined in [docs/MODEL_ARTIFACT_CONTRACT.md](docs/MODEL_ARTIFACT_CONTRACT.md).
 
@@ -124,7 +124,7 @@ Run the notebooks in this order inside a persistent Lightning AI Studio:
 
 The first notebook saves Git-ignored Parquet files under `data/processed/`. Each training notebook creates a versioned, Git-ignored bundle under `artifacts/<model>/<UTC-run-id>/`, performs a mandatory save/reload prediction test, and can optionally upload the run to private Cloudflare R2 storage.
 
-Share the browser-friendly [HTML teammate training guide](docs/TEAMMATE_TRAINING_GUIDE.html) with model owners; every command has a copy button. A Markdown copy is available at [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md). See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) for the complete training guide.
+Share [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md) with model owners. See [docs/LIGHTNING_TRAINING_GUIDE.md](docs/LIGHTNING_TRAINING_GUIDE.md) for the complete training guide. The browser-friendly HTML export is kept locally and ignored by Git.
 
 ## Cloud architecture
 

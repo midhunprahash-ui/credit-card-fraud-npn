@@ -1,7 +1,8 @@
 # Interactive EDA report
 
-`ieee_cis_train_left_join_profile.html` is the validated, self-contained
-YData Profiling report for the IEEE-CIS labelled training data.
+`ieee_cis_train_left_join_profile.html`, when generated locally, is the
+self-contained YData Profiling report for the IEEE-CIS labelled training data.
+The large HTML file is intentionally ignored by Git and can be regenerated.
 
 It was generated from all 590,540 rows after:
 

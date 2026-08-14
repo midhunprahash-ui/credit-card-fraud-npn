@@ -23,7 +23,7 @@ Each model notebook has `FAST_RUN = False`. A teammate may temporarily set it
 to `True` to check that code runs, but fast-run metrics must never be presented
 as final results.
 
-The browser-friendly instructions with copy buttons are in
-`docs/TEAMMATE_TRAINING_GUIDE.html`; the Markdown copy is in
-`docs/TEAMMATE_TRAINING_GUIDE.md`.
+The shareable instructions are in `docs/TEAMMATE_TRAINING_GUIDE.md`.
+A browser-friendly HTML export may be kept locally, but it is intentionally
+ignored by Git.
 Complete technical instructions are in `docs/LIGHTNING_TRAINING_GUIDE.md`.

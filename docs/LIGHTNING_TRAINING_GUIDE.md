@@ -161,3 +161,4 @@ Each owner pair must provide:
 - **CUDA unavailable:** switch to a GPU Studio or set the CatBoost run to CPU.
 - **Unknown categories:** do not rebuild mappings; the saved preprocessor maps them to `UNKNOWN`.
 - **Joblib load error:** clone the same source version and install versions recorded in `training_config.json`.
+- **LightGBM saves only a few trees while validation PR-AUC is still rising:** pull the latest `main` branch. The corrected notebook disables default binary log-loss monitoring and selects the tree count using validation Average Precision only.

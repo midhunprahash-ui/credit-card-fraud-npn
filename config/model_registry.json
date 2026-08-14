@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "selection_metric": "validation_pr_auc",
+  "champion": "lightgbm",
+  "models": {
+    "logistic_regression": {
+      "enabled": true,
+      "run_id": "20260814T044445Z",
+      "artifact_subdirectory": "logistic_regression/20260814T044445Z",
+      "model_file": "model.joblib",
+      "threshold": 0.4982923354973524,
+      "validation_pr_auc": 0.3997137303568998,
+      "test_pr_auc": 0.170221542737057
+    },
+    "lightgbm": {
+      "enabled": true,
+      "run_id": "20260814T050814Z",
+      "artifact_subdirectory": "lightgbm/20260814T050814Z",
+      "model_file": "model.txt",
+      "preprocessor_file": "preprocessor.joblib",
+      "threshold": 0.003482925639424141,
+      "validation_pr_auc": 0.6302563545205424,
+      "test_pr_auc": 0.5397155482694362
+    },
+    "catboost": {
+      "enabled": true,
+      "run_id": "20260814T043639Z",
+      "artifact_subdirectory": "catboost/20260814T043639Z",
+      "model_file": "model.cbm",
+      "preprocessor_file": "preprocessor.joblib",
+      "threshold": 0.15576521235329022,
+      "validation_pr_auc": 0.5999816620059487,
+      "test_pr_auc": 0.532720081280758
+    },
+    "neural_network": {
+      "enabled": true,
+      "run_id": "20260814T051404Z",
+      "artifact_subdirectory": "neural_network/20260814T051404Z",
+      "model_file": "model.pt",
+      "preprocessor_file": "numeric_and_categorical_preprocessor.joblib",
+      "model_config_file": "model_config.json",
+      "threshold": 0.1490667760372162,
+      "validation_pr_auc": 0.5162574481035057,
+      "test_pr_auc": 0.4130057890045711
+    }
+  }
+}

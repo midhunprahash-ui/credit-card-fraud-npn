@@ -36,6 +36,11 @@ def sha256_file(path: Path) -> str:
 def build_manifest(directory: Path) -> dict[str, Any]:
     files = []
     for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+        # A manifest cannot contain a stable size/hash for itself because writing
+        # that entry changes the file. This also keeps rerunning a notebook's
+        # packaging cell from creating an impossible self-reference.
+        if path == directory / "manifest.json":
+            continue
         files.append(
             {
                 "path": str(path.relative_to(directory)),

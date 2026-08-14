@@ -116,8 +116,8 @@ Run the notebooks in this order inside a persistent Lightning AI Studio:
 
 1. `notebooks/lightning_ai/00_shared_data_preparation.ipynb` — Kaggle API download, memory-safe left join, feature audit, and frozen chronological partitions.
 2. `notebooks/lightning_ai/01_logistic_regression_nanda_khishan.ipynb` — Nanda / Khishan.
-3. `notebooks/lightning_ai/02_lightgbm_nebal_ajmeer.ipynb` — Nebal / Ajmeer.
-4. `notebooks/lightning_ai/03_catboost_midhun_saravana.ipynb` — Midhun / Saravana.
+3. `notebooks/lightning_ai/02_lightgbm_saravana_nebal.ipynb` — Saravana / Nebal.
+4. `notebooks/lightning_ai/03_catboost_midhun_ajmeer.ipynb` — Midhun / Ajmeer.
 5. `notebooks/lightning_ai/04_tabular_neural_network_mirdula_hashvitha.ipynb` — Mirdula / Hashvitha.
 
 The first notebook saves Git-ignored Parquet files under `data/processed/`. Each training notebook creates a versioned, Git-ignored bundle under `artifacts/<model>/<UTC-run-id>/`, performs a mandatory save/reload prediction test, and can optionally upload the run to private Cloudflare R2 storage.

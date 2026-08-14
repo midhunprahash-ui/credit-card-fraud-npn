@@ -602,6 +602,10 @@ def build_lightgbm_notebook() -> None:
         scale_pos_weight = float(negative / positive)
         model = lgb.LGBMClassifier(
             objective="binary",
+            # Disable LightGBM's default binary_logloss evaluation. With class
+            # weighting it can worsen while fraud-ranking PR-AUC improves, which
+            # previously caused the saved model to contain only two trees.
+            metric="None",
             n_estimators=5000,
             learning_rate=0.03,
             num_leaves=64,
@@ -622,7 +626,10 @@ def build_lightgbm_notebook() -> None:
             eval_set=[(X_validation_model, y_validation)],
             eval_metric="average_precision",
             categorical_feature=preprocessor.categorical_features,
-            callbacks=[lgb.early_stopping(200), lgb.log_evaluation(100)],
+            callbacks=[
+                lgb.early_stopping(200, first_metric_only=True),
+                lgb.log_evaluation(100),
+            ],
         )
         training_seconds = time.perf_counter() - started
         print("Best iteration:", model.best_iteration_)

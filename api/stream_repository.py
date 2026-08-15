@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -298,3 +299,141 @@ class SupabaseStreamRepository:
                 prefer="resolution=merge-duplicates,return=minimal",
             )
         await self.update_run(run_id, run_values)
+
+    async def list_alerts(
+        self,
+        *,
+        limit: int = 100,
+        status: str | None = None,
+        transaction_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        if not 1 <= limit <= 500:
+            raise ValueError("Alert limit must be between 1 and 500")
+        params = {
+            "select": (
+                "id,stream_run_id,transaction_id,status,highest_risk_score,"
+                "model_agreement,selected_model_count,suspicious_amount,created_at,updated_at,"
+                "stream_runs(selected_models,selected_versions)"
+            ),
+            "order": "highest_risk_score.desc,created_at.asc",
+            "limit": str(limit),
+        }
+        if status:
+            params["status"] = f"eq.{status}"
+        if transaction_id is not None:
+            params["transaction_id"] = f"eq.{transaction_id}"
+        return await self.client.request("GET", "fraud_alerts", params=params)
+
+    async def get_alert(self, alert_id: str) -> dict[str, Any] | None:
+        alerts = await self.client.request(
+            "GET",
+            "fraud_alerts",
+            params={
+                "select": (
+                    "id,stream_run_id,stream_transaction_event_id,transaction_id,status,"
+                    "highest_risk_score,model_agreement,selected_model_count,"
+                    "suspicious_amount,created_at,updated_at"
+                ),
+                "id": f"eq.{alert_id}",
+                "limit": "1",
+            },
+        )
+        if not alerts:
+            return None
+        alert = alerts[0]
+        run_id = str(alert["stream_run_id"])
+        transaction_id = int(alert["transaction_id"])
+        predictions, actions, lifecycle = await asyncio.gather(
+            self.client.request(
+                "GET",
+                "prediction_events",
+                params={
+                    "select": (
+                        "model_identifier,risk_score,threshold,decision,actual_label,"
+                        "latency_ms,model_run_id,created_at"
+                    ),
+                    "stream_run_id": f"eq.{run_id}",
+                    "transaction_id": f"eq.{transaction_id}",
+                    "order": "model_identifier.asc",
+                },
+            ),
+            self.client.request(
+                "GET",
+                "analyst_actions",
+                params={
+                    "select": "id,action,analyst_identifier,note,created_at",
+                    "fraud_alert_id": f"eq.{alert_id}",
+                    "order": "created_at.asc",
+                },
+            ),
+            self.client.request(
+                "GET",
+                "stream_transaction_events",
+                params={
+                    "select": (
+                        "stream_transaction_id,sequence_number,arrival_time,queue_position,"
+                        "processing_started_at,completed_at,status,error_code"
+                    ),
+                    "id": f"eq.{alert['stream_transaction_event_id']}",
+                    "limit": "1",
+                },
+            ),
+        )
+        transaction_payload = None
+        if lifecycle:
+            stored = await self.client.request(
+                "GET",
+                "stream_transactions",
+                params={
+                    "select": "transaction_payload,transaction_dt",
+                    "id": f"eq.{lifecycle[0]['stream_transaction_id']}",
+                    "limit": "1",
+                },
+            )
+            if stored:
+                transaction_payload = stored[0]
+        return {
+            **alert,
+            "predictions": predictions,
+            "analyst_actions": actions,
+            "lifecycle": lifecycle[0] if lifecycle else None,
+            "transaction": transaction_payload,
+        }
+
+    async def add_alert_action(
+        self,
+        alert_id: str,
+        *,
+        action: str,
+        analyst_identifier: str,
+        note: str | None,
+    ) -> dict[str, Any]:
+        status_by_action = {
+            "CONFIRMED_FRAUD": "CONFIRMED_FRAUD",
+            "MARKED_LEGITIMATE": "LEGITIMATE",
+            "ESCALATED": "ESCALATED",
+            "CLOSED": "CLOSED",
+        }
+        status = status_by_action.get(action)
+        if status is not None:
+            await self.client.request(
+                "PATCH",
+                "fraud_alerts",
+                params={"id": f"eq.{alert_id}"},
+                body={"status": status, "updated_at": datetime.now(UTC).isoformat()},
+                prefer="return=minimal",
+            )
+        rows = await self.client.request(
+            "POST",
+            "analyst_actions",
+            body={
+                "fraud_alert_id": alert_id,
+                "action": action,
+                "analyst_identifier": analyst_identifier,
+                "note": note,
+            },
+            prefer="return=representation",
+        )
+        if len(rows) != 1:
+            raise SupabaseRepositoryError("Supabase did not return the analyst action")
+        return rows[0]

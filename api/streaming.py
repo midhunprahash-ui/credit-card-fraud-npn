@@ -381,6 +381,7 @@ class StreamController:
                             "queue_position": event.queue_position,
                             "status": "QUEUED",
                             "queue_length": self._queue.qsize(),
+                            "stream": self.snapshot(),
                         },
                     )
                     await asyncio.sleep(1 / self.transactions_per_second)
@@ -504,6 +505,7 @@ class StreamController:
                     "latency_ms": latency_ms,
                     "queue_length": self._queue.qsize(),
                     "error_code": error_code,
+                    "stream": self.snapshot(),
                 },
             )
             self._queue.task_done()

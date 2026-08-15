@@ -98,3 +98,33 @@ class StreamStartRequest(BaseModel):
         if len(value) != len(set(value)):
             raise ValueError("selected_models must be unique")
         return value
+
+
+class AlertActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal[
+        "CONFIRMED_FRAUD",
+        "MARKED_LEGITIMATE",
+        "ESCALATED",
+        "NOTE_ADDED",
+        "CLOSED",
+    ]
+    analyst_identifier: str = Field(min_length=1, max_length=128)
+    note: str | None = Field(default=None, max_length=2_000)
+
+    @field_validator("analyst_identifier")
+    @classmethod
+    def normalize_analyst_identifier(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("analyst_identifier cannot be blank")
+        return normalized
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None

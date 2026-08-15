@@ -303,10 +303,10 @@ def build_preparation() -> None:
 
         joblib.dump(deployment_reference, V2_DATA_DIR / "behavioral_reference.joblib", compress=3)
         write_json(V2_DATA_DIR / "data_summary.json", {
-            "version": "2.0", "joined_rows": len(joined),
-            "joined_columns_before_v2": len(joined.columns),
+            "version": "2.0", "joined_rows": len(ordered_features),
+            "joined_columns_before_v2": len(raw_columns),
             "columns_after_v2": len(ordered_features.columns),
-            "new_columns": [c for c in ordered_features.columns if c not in joined.columns],
+            "new_columns": [c for c in ordered_features.columns if c not in raw_columns],
         })
         print("Saved Version 2 data to:", V2_DATA_DIR)
         '''),

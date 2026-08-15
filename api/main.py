@@ -163,7 +163,7 @@ def create_app(
     app.state.stream_controller = active_stream_controller
     app.state.alert_repository = active_alert_repository
     if supabase_rest_client is not None:
-        app.add_event_handler("shutdown", supabase_rest_client.close)
+        app.router.add_event_handler("shutdown", supabase_rest_client.close)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=active_settings.allowed_origins,

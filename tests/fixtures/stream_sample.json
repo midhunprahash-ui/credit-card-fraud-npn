@@ -1,0 +1,51 @@
+{
+  "source": "First three real rows of the chronological labelled held-out IEEE-CIS partition; payloads are intentionally minimized for safe repository tests.",
+  "distribution_changed": false,
+  "transactions": [
+    {
+      "sequence_number": 0,
+      "transaction_id": 3488959,
+      "transaction_dt": 13151880.0,
+      "transaction_payload": {
+        "TransactionID": 3488959,
+        "TransactionDT": 13151880.0,
+        "TransactionAmt": 57.9500007629,
+        "ProductCD": "W",
+        "card1": 7919,
+        "card4": "mastercard",
+        "P_emaildomain": "anonymous.com"
+      },
+      "actual_label": false
+    },
+    {
+      "sequence_number": 1,
+      "transaction_id": 3488960,
+      "transaction_dt": 13151945.0,
+      "transaction_payload": {
+        "TransactionID": 3488960,
+        "TransactionDT": 13151945.0,
+        "TransactionAmt": 47.9500007629,
+        "ProductCD": "W",
+        "card1": 1764,
+        "card4": "visa",
+        "P_emaildomain": "gmail.com"
+      },
+      "actual_label": false
+    },
+    {
+      "sequence_number": 2,
+      "transaction_id": 3488961,
+      "transaction_dt": 13152098.0,
+      "transaction_payload": {
+        "TransactionID": 3488961,
+        "TransactionDT": 13152098.0,
+        "TransactionAmt": 209.9499969482,
+        "ProductCD": "W",
+        "card1": 2455,
+        "card4": "visa",
+        "P_emaildomain": "gmail.com"
+      },
+      "actual_label": false
+    }
+  ]
+}

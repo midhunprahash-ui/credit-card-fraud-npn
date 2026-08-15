@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -83,3 +83,18 @@ class ErrorBody(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorBody
+
+
+class StreamStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str = Field(min_length=1)
+    selected_models: list[str] = Field(min_length=1, max_length=8)
+    transactions_per_second: Literal[1, 2, 5]
+
+    @field_validator("selected_models")
+    @classmethod
+    def unique_stream_models(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("selected_models must be unique")
+        return value

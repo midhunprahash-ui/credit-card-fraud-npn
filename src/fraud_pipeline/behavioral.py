@@ -25,6 +25,20 @@ UID_UNIQUE_VALUE_COLUMNS = (
     "transaction_amount_cents",
 )
 UID_D_STAT_COLUMNS = ("D4_normalized", "D10_normalized", "D15_normalized")
+REFERENCE_SOURCE_COLUMNS = (
+    ID_COLUMN,
+    TIME_COLUMN,
+    "TransactionAmt",
+    "card1",
+    "addr1",
+    "D1",
+    "D4",
+    "D10",
+    "D15",
+    "P_emaildomain",
+    "DeviceType",
+    "DeviceInfo",
+)
 
 
 def _clean_text(series: pd.Series) -> pd.Series:
@@ -247,6 +261,8 @@ def build_behavioral_reference(frame: pd.DataFrame) -> dict[str, Any]:
         "last_time": {},
         "numeric": {},
         "nunique": {},
+        "unique_hashes": {},
+        "online_unique_hashes": {},
     }
     for key in COUNT_TIME_KEYS:
         reference["counts"][key] = history[key].value_counts(dropna=False).to_dict()
@@ -283,9 +299,14 @@ def build_behavioral_reference(frame: pd.DataFrame) -> dict[str, Any]:
 
     for column in UID_UNIQUE_VALUE_COLUMNS:
         if column in history:
+            keys = _clean_text(history["uid_proxy"])
+            values = _clean_text(history[column])
             reference["nunique"][column] = (
-                history.groupby("uid_proxy", observed=True)[column].nunique(dropna=False).to_dict()
+                values.groupby(keys, observed=True).nunique().to_dict()
             )
+            pair_hashes = _stable_pair_hashes(keys, values)
+            reference["unique_hashes"][column] = np.unique(pair_hashes)
+            reference["online_unique_hashes"][column] = set()
     return reference
 
 
@@ -343,3 +364,102 @@ def apply_behavioral_reference(
                 .astype("int32")
             )
     return result
+
+
+def update_behavioral_reference(
+    reference: dict[str, Any], frame: pd.DataFrame
+) -> None:
+    """Update online V2 state after prediction, in chronological FIFO order."""
+    if not {"unique_hashes", "online_unique_hashes"}.issubset(reference):
+        raise ValueError("Behavioral reference must be regenerated for online updates")
+    rows = add_v2_row_features(frame, copy=True).sort_values(
+        [TIME_COLUMN, ID_COLUMN], kind="stable"
+    )
+    for _, row in rows.iterrows():
+        row_time = float(row[TIME_COLUMN])
+        row_id = int(row[ID_COLUMN])
+        metadata = reference["contract"]["metadata"]
+        previous_cutoff = (
+            float(metadata["history_end_transaction_dt"]),
+            int(metadata["history_end_transaction_id"]),
+        )
+        if (row_time, row_id) <= previous_cutoff:
+            raise ValueError("Online behavioral update is not strictly chronological")
+
+        for key in COUNT_TIME_KEYS:
+            lookup_key = str(row[key]) if pd.notna(row[key]) else "MISSING"
+            reference["counts"][key][lookup_key] = (
+                int(reference["counts"][key].get(lookup_key, 0)) + 1
+            )
+            reference["last_time"][key][lookup_key] = row_time
+
+        numeric_pairs = [
+            (key, "TransactionAmt", f"{key}_amount") for key in AMOUNT_KEYS
+        ]
+        numeric_pairs.extend(
+            ("uid_proxy", column, f"uid_proxy_{column}")
+            for column in UID_D_STAT_COLUMNS
+            if column in rows
+        )
+        for key, value, prefix in numeric_pairs:
+            numeric_value = pd.to_numeric(pd.Series([row[value]]), errors="coerce").iloc[0]
+            if pd.isna(numeric_value):
+                continue
+            lookup_key = str(row[key]) if pd.notna(row[key]) else "MISSING"
+            summary = reference["numeric"][prefix]
+            count = int(summary["count"].get(lookup_key, 0))
+            mean = float(summary["mean"].get(lookup_key, 0.0)) if count else 0.0
+            std = float(summary["std"].get(lookup_key, 0.0)) if count >= 2 else 0.0
+            m2 = std * std * count
+            new_count = count + 1
+            delta = float(numeric_value) - mean
+            new_mean = mean + delta / new_count
+            new_m2 = m2 + delta * (float(numeric_value) - new_mean)
+            summary["count"][lookup_key] = new_count
+            summary["mean"][lookup_key] = np.float32(new_mean)
+            summary["std"][lookup_key] = (
+                np.float32(np.sqrt(max(new_m2 / new_count, 0.0)))
+                if new_count >= 2
+                else np.nan
+            )
+
+        uid_key = str(row["uid_proxy"]) if pd.notna(row["uid_proxy"]) else "MISSING"
+        for column in UID_UNIQUE_VALUE_COLUMNS:
+            if column not in rows:
+                continue
+            value = str(row[column]) if pd.notna(row[column]) else "MISSING"
+            pair_hash = int(
+                _stable_pair_hashes(
+                    pd.Series([uid_key], dtype="string"),
+                    pd.Series([value], dtype="string"),
+                )[0]
+            )
+            baseline = reference["unique_hashes"][column]
+            position = int(np.searchsorted(baseline, pair_hash))
+            existed_in_baseline = (
+                position < len(baseline) and int(baseline[position]) == pair_hash
+            )
+            online_hashes = reference["online_unique_hashes"][column]
+            if not existed_in_baseline and pair_hash not in online_hashes:
+                online_hashes.add(pair_hash)
+                current = int(reference["nunique"][column].get(uid_key, 0))
+                reference["nunique"][column][uid_key] = current + 1
+
+        metadata["history_end_transaction_dt"] = row_time
+        metadata["history_end_transaction_id"] = row_id
+        metadata["history_row_count"] = int(metadata["history_row_count"]) + 1
+
+
+def _stable_pair_hashes(keys: pd.Series, values: pd.Series) -> np.ndarray:
+    """Return deterministic compact hashes for exact historical membership."""
+    key_hashes = pd.util.hash_pandas_object(keys, index=False).to_numpy(dtype="uint64")
+    value_hashes = pd.util.hash_pandas_object(values, index=False).to_numpy(dtype="uint64")
+    # Boost-style combination keeps order significant and is stable across the
+    # batch builder and one-row online updater. A 64-bit collision is possible
+    # in theory but negligible for this sub-million-row demonstration state.
+    return key_hashes ^ (
+        value_hashes
+        + np.uint64(0x9E3779B97F4A7C15)
+        + (key_hashes << np.uint64(6))
+        + (key_hashes >> np.uint64(2))
+    )

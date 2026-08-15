@@ -121,11 +121,13 @@ Before notebook 00, accept the Kaggle competition rules and create an API token.
 
 Responsibilities:
 
-- Download, verify, and load all four approved model bundles once at startup.
+- Verify and lazily load only requested approved V1/V2 model bundles.
 - Validate request data.
 - Generate features using the same logic as training.
-- Return a fraud score, risk band, and action.
-- Expose `/health`, `/predict`, `/predict-batch`, and `/model-metrics`.
+- Return independent fraud-risk scores and saved thresholds.
+- Replay labelled held-out transactions through one strict FIFO consumer.
+- Publish live results over SSE and batch durable results to Supabase.
+- Expose health, manual, batch, stream-control, SSE, and metrics endpoints.
 
 ### React/Vite frontend (`frontend/`)
 

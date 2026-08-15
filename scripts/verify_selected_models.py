@@ -11,14 +11,15 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.fraud_pipeline.behavioral import build_behavioral_reference
 from src.fraud_pipeline.input_contract import RawInputContract, prepare_model_input
 from src.fraud_pipeline.model_adapters import load_model_adapter, verify_artifact_manifest
 from src.fraud_pipeline.registry import ModelRegistry, ModelSpec
@@ -52,6 +53,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_ROOT / "data" / "processed" / "v2" / "raw_input_schema.json",
     )
+    parser.add_argument(
+        "--behavioral-reference",
+        type=Path,
+        default=PROJECT_ROOT / "data/processed/v2/behavioral_reference.joblib",
+    )
     parser.add_argument("--json", action="store_true", dest="json_output")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--model-key", help=argparse.SUPPRESS)
@@ -78,7 +84,12 @@ def build_verification_sample(
 ) -> pd.DataFrame:
     if sample_size < 1:
         raise ValueError("sample-size must be at least one")
-    sample = pd.read_parquet(test_data).iloc[:sample_size].copy()
+    parquet = pq.ParquetFile(test_data)
+    try:
+        first_batch = next(parquet.iter_batches(batch_size=sample_size))
+    except StopIteration as error:
+        raise ValueError("Held-out verification data is empty") from error
+    sample = first_batch.to_pandas().iloc[:sample_size].copy()
     required = {"TransactionID", "TransactionDT", "isFraud"}
     missing = required - set(sample)
     if missing:
@@ -206,14 +217,12 @@ def build_raw_golden_inputs(
     raw["isFraud"] = sample.iloc[0]["isFraud"]
     aligned = contract.align(raw)
 
-    history = pd.concat(
-        [
-            pd.read_parquet(args.train_data, columns=list(contract.columns)),
-            pd.read_parquet(args.validation_data, columns=list(contract.columns)),
-        ],
-        ignore_index=True,
-    )
-    reference = build_behavioral_reference(history)
+    if not args.behavioral_reference.is_file():
+        raise ValueError(
+            "Safe V2 behavioral reference is missing; run "
+            "scripts/prepare_behavioral_reference.py first"
+        )
+    reference = joblib.load(args.behavioral_reference)
     prepared = {
         "V1": prepare_model_input(aligned, "V1"),
         "V2": prepare_model_input(

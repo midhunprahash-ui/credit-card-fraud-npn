@@ -1,6 +1,7 @@
 services:
   - type: web
     name: npn-fraud-analyst-api
+    repo: https://github.com/midhunprahash-ui/credit-card-fraud-npn
     runtime: python
     plan: free
     region: singapore
@@ -28,4 +29,3 @@ services:
         sync: false
       - key: R2_BUCKET_NAME
         sync: false
-

@@ -153,3 +153,6 @@ eight-pipeline check in
 [docs/MODEL_VERIFICATION_GATE.md](docs/MODEL_VERIFICATION_GATE.md).
 The completed local inference foundation and its known boundaries are recorded
 in [docs/MILESTONE_1_INFERENCE_REPORT.md](docs/MILESTONE_1_INFERENCE_REPORT.md).
+The typed manual prediction, one-row CSV, batch CSV, model-cache, and API error
+contracts are documented in
+[docs/MILESTONE_2_API_GUIDE.md](docs/MILESTONE_2_API_GUIDE.md).

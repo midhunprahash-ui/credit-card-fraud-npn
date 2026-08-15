@@ -1,5 +1,12 @@
 boto3==1.43.55
 fastapi==0.141.1
 httpx==0.28.1
+joblib>=1.5,<2
+numpy>=2,<3
+pandas>=2.3,<3
 pydantic-settings==2.15.0
+pyarrow>=21,<23
+psutil>=7,<8
+python-multipart>=0.0.20,<1
+scikit-learn>=1.7,<1.8
 uvicorn[standard]==0.52.3

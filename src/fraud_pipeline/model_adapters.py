@@ -30,6 +30,13 @@ class ModelPrediction:
     processing_status: str = "completed"
 
 
+class ModelPredictionError(RuntimeError):
+    def __init__(self, model_identifier: str, error_type: str) -> None:
+        super().__init__(f"Approved model {model_identifier} could not score the input")
+        self.model_identifier = model_identifier
+        self.error_type = error_type
+
+
 def verify_artifact_manifest(directory: Path) -> dict[str, int]:
     manifest_path = directory / "manifest.json"
     if not manifest_path.is_file():
@@ -60,14 +67,23 @@ class ModelAdapter(ABC):
         self.feature_columns = _feature_columns(spec.artifact_directory / "feature_schema.json")
 
     def predict(self, frame: pd.DataFrame) -> list[ModelPrediction]:
-        aligned = self._align(frame)
-        started = time.perf_counter()
-        scores = np.asarray(self._predict_scores(aligned), dtype=np.float64).reshape(-1)
-        elapsed_ms = (time.perf_counter() - started) * 1_000
-        if len(scores) != len(frame):
-            raise ValueError(f"{self.spec.identifier} returned an unexpected score count")
-        if not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
-            raise ValueError(f"{self.spec.identifier} returned an invalid fraud-risk score")
+        try:
+            aligned = self._align(frame)
+            started = time.perf_counter()
+            scores = np.asarray(self._predict_scores(aligned), dtype=np.float64).reshape(-1)
+            elapsed_ms = (time.perf_counter() - started) * 1_000
+            if len(scores) != len(frame):
+                raise ValueError(
+                    f"{self.spec.identifier} returned an unexpected score count"
+                )
+            if not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
+                raise ValueError(
+                    f"{self.spec.identifier} returned an invalid fraud-risk score"
+                )
+        except Exception as error:
+            raise ModelPredictionError(
+                self.spec.identifier, type(error).__name__
+            ) from error
         per_row_latency = elapsed_ms / max(len(scores), 1)
         return [
             ModelPrediction(

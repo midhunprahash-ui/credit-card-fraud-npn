@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.fraud_pipeline.model_adapters import ModelAdapter
+from src.fraud_pipeline.model_adapters import ModelAdapter, ModelPredictionError
 from src.fraud_pipeline.registry import ModelSpec
 
 
@@ -47,7 +47,11 @@ def test_standard_adapter_result_uses_saved_threshold(tmp_path: Path) -> None:
 
 def test_adapter_rejects_missing_and_protected_features(tmp_path: Path) -> None:
     adapter = FixedScoreAdapter(spec_for(tmp_path), [0.5])
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(ModelPredictionError) as missing:
         adapter.predict(pd.DataFrame({"different": [1]}))
-    with pytest.raises(ValueError, match="Protected"):
+    assert isinstance(missing.value.__cause__, ValueError)
+    assert "missing" in str(missing.value.__cause__)
+    with pytest.raises(ModelPredictionError) as protected:
         adapter.predict(pd.DataFrame({"amount": [1], "isFraud": [1]}))
+    assert isinstance(protected.value.__cause__, ValueError)
+    assert "Protected" in str(protected.value.__cause__)

@@ -142,7 +142,7 @@ The finalized platform split is:
 
 - Lightning AI trains the four models.
 - Private Cloudflare R2 stores approved versioned model bundles.
-- FastAPI runs as a containerized Render web service and loads all four models.
+- FastAPI runs as a Render web service and lazily loads requested V1/V2 models.
 - React/Vite is deployed to Cloudflare Pages.
 - GitHub `main` triggers finalized deployments.
 

@@ -10,7 +10,9 @@ def test_health_reports_eight_registered_models_without_secrets() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {
+    body = response.json()
+    assert 0 <= body.pop("model_artifacts_available") <= 8
+    assert body == {
         "status": "ok",
         "environment": "development",
         "models_registered": 8,

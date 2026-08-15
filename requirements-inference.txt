@@ -1,0 +1,5 @@
+# Native runtimes required to serve all eight selected pipelines locally.
+# Install together with requirements-api.txt.
+catboost>=1.2.10,<2
+lightgbm>=4.7,<5
+torch>=2.8,<3

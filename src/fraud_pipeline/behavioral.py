@@ -49,6 +49,11 @@ def add_v2_row_features(frame: pd.DataFrame, *, copy: bool = False) -> pd.DataFr
     result = frame.copy() if copy else frame
     if "num_missing" not in result:
         result = add_shared_features(result, copy=False)
+    # JSON-built single-row frames can have hundreds of tiny dtype blocks after
+    # downcasting. Consolidating small inference batches prevents repeated
+    # inserts from degrading latency without copying the full training dataset.
+    if len(result) <= 1_000:
+        result = result.copy()
 
     # The shared memory reducer may downcast small samples to int16/int32.
     # Promote before modulo/division so constants such as 86,400 cannot overflow.

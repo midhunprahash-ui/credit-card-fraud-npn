@@ -18,6 +18,7 @@ from .preprocessing import (
     infer_feature_groups,
 )
 from .model_contracts import MODEL_DISPLAY_NAMES, MODEL_ORDER, VERSION_ORDER
+from .model_manager import ModelLoadError, ModelManager
 from .registry import ModelRegistry, ModelSpec
 
 __all__ = [
@@ -40,4 +41,6 @@ __all__ = [
     "VERSION_ORDER",
     "ModelRegistry",
     "ModelSpec",
+    "ModelLoadError",
+    "ModelManager",
 ]

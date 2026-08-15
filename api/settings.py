@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,7 +17,18 @@ class Settings(BaseSettings):
     )
 
     environment: str = "development"
+    log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
+
+    raw_input_schema_path: Path = Path("config/raw_input_schema.json")
+    demo_dataset_path: Path = Path("data/processed/v2/test.parquet")
+    behavioral_reference_path: Path = Path(
+        "data/processed/v2/behavioral_reference.joblib"
+    )
+    model_cache_size: int = Field(default=2, ge=1, le=8)
+    batch_max_file_bytes: int = Field(default=5_000_000, ge=1)
+    batch_max_rows: int = Field(default=1_000, ge=1, le=10_000)
+    batch_chunk_size: int = Field(default=100, ge=1, le=1_000)
 
     supabase_url: str | None = None
     supabase_secret_key: SecretStr | None = None
@@ -47,4 +59,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

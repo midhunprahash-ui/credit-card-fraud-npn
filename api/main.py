@@ -6,6 +6,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import VersionName, load_model_catalog
+from .r2 import R2Gateway
 from .settings import Settings, get_settings
 from .supabase import SupabaseGateway
 
@@ -13,6 +14,7 @@ from .supabase import SupabaseGateway
 def create_app(settings: Settings | None = None) -> FastAPI:
     active_settings = settings or get_settings()
     catalog = load_model_catalog()
+    r2 = R2Gateway(active_settings)
     supabase = SupabaseGateway(active_settings)
 
     app = FastAPI(
@@ -46,7 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def integrations() -> dict[str, object]:
         return {
             "supabase": await supabase.check_connection(),
-            "cloudflare_r2": {"configured": active_settings.r2_configured},
+            "cloudflare_r2": await r2.check_connection(),
         }
 
     @app.get("/models")
@@ -60,4 +62,3 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 app = create_app()
-

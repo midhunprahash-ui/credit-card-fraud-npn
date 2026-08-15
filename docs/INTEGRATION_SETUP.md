@@ -78,6 +78,10 @@ The Blueprint asks for these values in the Render Dashboard:
 - `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; and
 - `R2_BUCKET_NAME`.
 
+The `/integrations` endpoint performs a bounded, read-only `HeadBucket` request.
+This verifies the R2 endpoint, credentials and bucket scope without listing or
+downloading an object.
+
 The current free plan is suitable only for the integration shell. Model memory
 profiling must select a larger plan or a version-scoped loading strategy before
 the eight real artifacts are enabled.

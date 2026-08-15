@@ -1,0 +1,2 @@
+"""Fraud analyst FastAPI application."""
+

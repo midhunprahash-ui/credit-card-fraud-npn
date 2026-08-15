@@ -25,6 +25,12 @@ venv/
 *.log
 .streamlit/secrets.toml
 
+# Frontend dependencies and Cloudflare/Vite build output
+node_modules/
+dist/
+.wrangler/
+*.tsbuildinfo
+
 # Generated EDA reports (large, reproducible artifacts)
 reports/generated/
 reports/eda/ieee_cis_train_left_join_profile.html

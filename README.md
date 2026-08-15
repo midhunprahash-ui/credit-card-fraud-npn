@@ -141,3 +141,7 @@ Share [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md) with mo
 - **Frontend:** React/Vite on Cloudflare Pages; displays four outputs side by side.
 
 See [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md).
+
+The checked-in Supabase migration, Render Blueprint, Cloudflare Pages build
+settings, secret boundaries and local verification commands are explained in
+[docs/INTEGRATION_SETUP.md](docs/INTEGRATION_SETUP.md).

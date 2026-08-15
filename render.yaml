@@ -17,6 +17,8 @@ services:
         value: 3.12.11
       - key: CORS_ORIGINS
         sync: false
+      - key: MODEL_CACHE_SIZE
+        value: "2"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY

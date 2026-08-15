@@ -156,3 +156,6 @@ in [docs/MILESTONE_1_INFERENCE_REPORT.md](docs/MILESTONE_1_INFERENCE_REPORT.md).
 The typed manual prediction, one-row CSV, batch CSV, model-cache, and API error
 contracts are documented in
 [docs/MILESTONE_2_API_GUIDE.md](docs/MILESTONE_2_API_GUIDE.md).
+The strict FIFO held-out replay, Supabase schema, hidden-label boundary, SSE
+contract, reproducible dataset upload, and stream tests are documented in
+[docs/MILESTONE_3_STREAMING_GUIDE.md](docs/MILESTONE_3_STREAMING_GUIDE.md).

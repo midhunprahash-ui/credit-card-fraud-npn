@@ -6,8 +6,9 @@ The backend now exposes the verified Milestone 1 inference contract through
 typed FastAPI endpoints. It supports real held-out demonstration lookup, JSON
 single prediction, one-row CSV prediction, and chunked CSV batch prediction.
 
-Supabase persistence, FIFO streaming, SSE, R2 downloads, and the React interface
-remain later milestones.
+This document covers the Milestone 2 manual surface. Supabase FIFO streaming and
+SSE were added in Milestone 3 and are documented separately; R2 artifact
+transfer and the final React interface remain later milestones.
 
 ## Local setup
 
@@ -57,7 +58,8 @@ Open `http://localhost:8000/docs` for the generated OpenAPI interface.
 | POST | `/predict/batch` | Chunked raw CSV scoring and row-level validation |
 | GET | `/metrics/summary` | In-process counts, latency, errors, and model-cache state |
 
-The stream endpoints are intentionally deferred to Milestone 3.
+See [MILESTONE_3_STREAMING_GUIDE.md](MILESTONE_3_STREAMING_GUIDE.md) for the
+stream endpoints added after this manual API milestone.
 
 ## Single JSON request
 

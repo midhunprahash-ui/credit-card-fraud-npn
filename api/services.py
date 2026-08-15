@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import io
 import json
 import logging
@@ -58,6 +59,10 @@ class BehavioralReferenceProvider:
             self._reference = reference
             return reference
 
+    def get_copy(self) -> dict[str, Any]:
+        """Give each stream isolated mutable online state."""
+        return copy.deepcopy(self.get())
+
 
 class RuntimeMetrics:
     def __init__(self) -> None:
@@ -111,13 +116,19 @@ class PredictionService:
         self.metrics = metrics
 
     def predict(
-        self, transaction: dict[str, Any], model_identifiers: list[str]
+        self,
+        transaction: dict[str, Any],
+        model_identifiers: list[str],
+        *,
+        behavioral_reference: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         started = time.perf_counter()
         try:
             specs = [self.registry.get(identifier) for identifier in model_identifiers]
             reference = (
-                self.reference_provider.get()
+                behavioral_reference
+                if behavioral_reference is not None
+                else self.reference_provider.get()
                 if any(spec.version_name == "V2" for spec in specs)
                 else None
             )

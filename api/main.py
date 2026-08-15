@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -13,7 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from src.fraud_pipeline.input_contract import RawInputContract
 from src.fraud_pipeline.model_manager import ModelManager
@@ -24,7 +25,12 @@ from .demo_repository import DemoTransactionRepository
 from .errors import ApiError
 from .logging_config import configure_logging
 from .r2 import R2Gateway
-from .schemas import BatchPredictionResponse, PredictionRequest, PredictionResponse
+from .schemas import (
+    BatchPredictionResponse,
+    PredictionRequest,
+    PredictionResponse,
+    StreamStartRequest,
+)
 from .services import (
     BatchPredictionService,
     BehavioralReferenceProvider,
@@ -34,6 +40,8 @@ from .services import (
     parse_model_identifiers,
 )
 from .settings import Settings, get_settings
+from .stream_repository import SupabaseRestClient, SupabaseStreamRepository
+from .streaming import StreamController
 from .supabase import SupabaseGateway
 
 
@@ -46,6 +54,7 @@ def create_app(
     prediction_service: PredictionService | Any | None = None,
     batch_service: BatchPredictionService | Any | None = None,
     demo_repository: DemoTransactionRepository | Any | None = None,
+    stream_controller: StreamController | Any | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     configure_logging(active_settings.log_level)
@@ -77,16 +86,31 @@ def create_app(
     active_demo_repository = demo_repository or DemoTransactionRepository(
         _resolve_project_path(active_settings.demo_dataset_path), raw_contract
     )
+    supabase_rest_client: SupabaseRestClient | None = None
+    active_stream_controller = stream_controller
+    if active_stream_controller is None and active_settings.supabase_configured:
+        supabase_rest_client = SupabaseRestClient(active_settings)
+        active_stream_controller = StreamController(
+            SupabaseStreamRepository(supabase_rest_client),
+            registry,
+            model_manager,
+            active_prediction_service,
+            reference_provider,
+            raw_contract,
+        )
     r2 = R2Gateway(active_settings)
     supabase = SupabaseGateway(active_settings)
 
     app = FastAPI(
         title="NPN Fraud Intelligence API",
-        version="0.2.0",
-        description="Verified V1/V2 fraud-risk inference for manual analyst workflows.",
+        version="0.3.0",
+        description="Verified manual and strict-FIFO V1/V2 fraud-risk inference.",
     )
     app.state.model_manager = model_manager
     app.state.metrics = metrics
+    app.state.stream_controller = active_stream_controller
+    if supabase_rest_client is not None:
+        app.add_event_handler("shutdown", supabase_rest_client.close)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=active_settings.allowed_origins,
@@ -302,7 +326,67 @@ def create_app(
         return {
             "runtime": metrics.summary(),
             "model_manager": model_manager.status(),
+            "stream": (
+                active_stream_controller.snapshot()
+                if active_stream_controller is not None
+                else {"status": "UNAVAILABLE"}
+            ),
         }
+
+    @app.get("/stream/datasets")
+    async def stream_datasets() -> dict[str, object]:
+        controller = _require_stream_controller(active_stream_controller)
+        return {"datasets": await controller.list_datasets()}
+
+    @app.post("/stream/start")
+    async def stream_start(request: StreamStartRequest) -> dict[str, Any]:
+        controller = _require_stream_controller(active_stream_controller)
+        return await controller.start(
+            dataset_id=request.dataset_id,
+            selected_models=request.selected_models,
+            transactions_per_second=request.transactions_per_second,
+        )
+
+    @app.post("/stream/pause")
+    async def stream_pause() -> dict[str, Any]:
+        return await _require_stream_controller(active_stream_controller).pause()
+
+    @app.post("/stream/resume")
+    async def stream_resume() -> dict[str, Any]:
+        return await _require_stream_controller(active_stream_controller).resume()
+
+    @app.post("/stream/stop")
+    async def stream_stop() -> dict[str, Any]:
+        return await _require_stream_controller(active_stream_controller).stop()
+
+    @app.post("/stream/restart")
+    async def stream_restart() -> dict[str, Any]:
+        return await _require_stream_controller(active_stream_controller).restart()
+
+    @app.get("/stream/status")
+    async def stream_status() -> dict[str, Any]:
+        return _require_stream_controller(active_stream_controller).snapshot()
+
+    @app.get("/stream/events")
+    async def stream_events(request: Request) -> StreamingResponse:
+        controller = _require_stream_controller(active_stream_controller)
+
+        async def event_source():
+            yield _format_sse("stream_status", controller.snapshot())
+            async for event in controller.broker.subscribe():
+                if await request.is_disconnected():
+                    break
+                yield _format_sse(event["event"], event["data"])
+
+        return StreamingResponse(
+            event_source(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     return app
 
@@ -319,6 +403,20 @@ def _validated_form_models(value: str, registry: ModelRegistry) -> list[str]:
     except ValueError as error:
         raise ApiError(422, "invalid_model_selection", str(error)) from error
     return identifiers
+
+
+def _require_stream_controller(controller: StreamController | Any | None):
+    if controller is None:
+        raise ApiError(
+            503,
+            "streaming_unavailable",
+            "Streaming requires server-side Supabase credentials",
+        )
+    return controller
+
+
+def _format_sse(event_type: str, data: dict[str, Any]) -> str:
+    return f"event: {event_type}\ndata: {json.dumps(data, separators=(',', ':'))}\n\n"
 
 
 app = create_app()

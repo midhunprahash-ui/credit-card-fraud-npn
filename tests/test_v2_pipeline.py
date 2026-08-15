@@ -5,6 +5,7 @@ from src.fraud_pipeline.behavioral import (
     add_causal_behavioral_features,
     apply_behavioral_reference,
     build_behavioral_reference,
+    update_behavioral_reference,
 )
 from src.fraud_pipeline.validation_v2 import (
     apply_two_model_logit_blend,
@@ -98,6 +99,29 @@ def test_frozen_reference_matches_causal_training_statistics() -> None:
     metadata = reference["contract"]["metadata"]
     assert metadata["history_end_transaction_id"] == 5
     assert metadata["history_end_transaction_dt"] == 500.0
+
+
+def test_online_reference_updates_only_after_each_prediction() -> None:
+    raw = behavioral_frame()
+    reference = build_behavioral_reference(raw.iloc[:4])
+    causal = add_causal_behavioral_features(raw, copy=True)
+    columns = [column for column in causal if "_prior_" in column or "zscore" in column]
+
+    for position in (4, 5):
+        current = raw.iloc[[position]]
+        before_update = apply_behavioral_reference(current, reference, copy=True)
+        pd.testing.assert_frame_equal(
+            before_update[columns].reset_index(drop=True),
+            causal.iloc[[position]][columns].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-4,
+            atol=1e-5,
+        )
+        update_behavioral_reference(reference, current)
+
+    metadata = reference["contract"]["metadata"]
+    assert metadata["history_end_transaction_id"] == 6
+    assert metadata["history_row_count"] == 6
 
 
 def test_time_folds_and_class_weights() -> None:

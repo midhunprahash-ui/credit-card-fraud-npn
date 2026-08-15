@@ -21,21 +21,27 @@ Only `VITE_API_URL` is public in the Cloudflare Pages build.
 ## Supabase
 
 The repository pins Supabase CLI `2.114.0` for commands documented here. The
-project configuration is in `supabase/config.toml`; database changes are in
-`supabase/migrations/`.
+project configuration is in `supabase/config.toml`; version-controlled database
+changes are in `supabase/migrations/`.
 
 The hosted project is `credit-card-fraud-npn` (`dsiqmudbeaarrnxuaujf`) in the
-Tokyo region. The repository is linked to it, and both committed migrations
+Tokyo region. The repository is linked to it, and all three committed migrations
 have been applied. Project references are identifiers, not credentials; no
 database password or API key is stored in Git.
 
-The first migration creates:
+The migrations create:
 
 - `stream_datasets` and FIFO-ordered `stream_transactions`;
 - `stream_ground_truth`, separate from model payloads;
 - `prediction_history` with exact `ModelName.VersionName` values;
 - `alerts`; and
 - `analyst_actions`.
+
+Milestone 3 additionally creates `stream_runs`, FIFO lifecycle events,
+model-specific `prediction_events`, and one investigation-ready `fraud_alert`
+per flagged transaction. See
+[MILESTONE_3_STREAMING_GUIDE.md](MILESTONE_3_STREAMING_GUIDE.md) for the data
+preparation, queue, SSE, and persistence contracts.
 
 All tables have RLS enabled. `anon` and `authenticated` have no table grants.
 Render uses a server-only Supabase secret key. This is deliberate because the
@@ -54,7 +60,8 @@ npx --yes supabase@2.114.0 db push
 Run database advisors after applying the migration:
 
 ```bash
-npx --yes supabase@2.114.0 db advisors
+npx --yes supabase@2.114.0 db advisors --linked --type security
+npx --yes supabase@2.114.0 db advisors --linked --type performance
 ```
 
 Do not put the access token, project secret key or database password in Git.

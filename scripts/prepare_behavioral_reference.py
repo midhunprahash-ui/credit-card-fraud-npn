@@ -17,7 +17,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.fraud_pipeline.behavioral import build_behavioral_reference
+from src.fraud_pipeline.behavioral import (
+    REFERENCE_SOURCE_COLUMNS,
+    build_behavioral_reference,
+)
 from src.fraud_pipeline.input_contract import RawInputContract
 
 
@@ -49,7 +52,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     contract = RawInputContract.load(args.schema)
-    columns = list(contract.columns)
+    missing = sorted(set(REFERENCE_SOURCE_COLUMNS) - set(contract.columns))
+    if missing:
+        raise ValueError(f"Raw input schema is missing reference columns: {missing}")
+    # The state uses only grouping, time and numeric-statistic fields. Loading
+    # all 433 raw columns would add gigabytes of peak memory without changing a
+    # single lookup value.
+    columns = list(REFERENCE_SOURCE_COLUMNS)
     history = pd.concat(
         [
             pd.read_parquet(args.train, columns=columns),

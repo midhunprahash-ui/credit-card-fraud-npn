@@ -58,7 +58,7 @@ export function AppShell({
           />
           <div>
             <strong>{apiOnline ? "API connected" : "API unavailable"}</strong>
-            <span>Render · Singapore</span>
+            <span>Cloud API · Production</span>
           </div>
         </div>
       </aside>

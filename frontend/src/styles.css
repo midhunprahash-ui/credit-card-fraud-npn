@@ -1,6 +1,6 @@
 :root {
-  color: #e9f1ef;
-  background: #07110f;
+  color: #202124;
+  background: #f7f7f8;
   font-family:
     Inter,
     ui-sans-serif,
@@ -10,23 +10,26 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --bg: #07110f;
-  --surface: #0d1916;
-  --surface-2: #12211d;
-  --surface-3: #182a25;
-  --line: #243a34;
-  --line-soft: #1a2d28;
-  --text: #e9f1ef;
-  --muted: #8fa29c;
-  --faint: #647a73;
-  --green: #42d49a;
-  --green-soft: #163d31;
-  --amber: #f4b85a;
-  --amber-soft: #3d2c17;
-  --red: #ff766a;
-  --red-soft: #45211f;
-  --blue: #65a9ff;
-  --radius: 14px;
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --surface-3: #e8eaed;
+  --line: #c8cbd0;
+  --line-soft: #e0e2e5;
+  --text: #202124;
+  --muted: #5f6875;
+  --faint: #66707c;
+  --accent: #f6821f;
+  --accent-hover: #b44f00;
+  --accent-soft: #fff1e6;
+  --green: #168a5b;
+  --green-soft: #e7f6ef;
+  --amber: #a85b00;
+  --amber-soft: #fff3d6;
+  --red: #c9362b;
+  --red-soft: #fdeceb;
+  --blue: #2463eb;
+  --radius: 0;
 }
 * {
   box-sizing: border-box;
@@ -52,7 +55,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent-hover);
   outline-offset: 2px;
 }
 h1,
@@ -115,7 +118,7 @@ a {
   height: 100vh;
   padding: 24px 16px;
   border-right: 1px solid var(--line-soft);
-  background: #091411;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   z-index: 20;
@@ -129,12 +132,11 @@ a {
 .brand-mark {
   width: 38px;
   height: 38px;
-  border-radius: 11px;
+  border-radius: 0;
   display: grid;
   place-items: center;
-  color: #07110f;
-  background: var(--green);
-  box-shadow: 0 0 30px rgba(66, 212, 154, 0.15);
+  color: var(--text);
+  background: var(--accent);
 }
 .brand div {
   display: grid;
@@ -159,7 +161,8 @@ a {
   width: 100%;
   padding: 11px 12px;
   border: 0;
-  border-radius: 10px;
+  border-left: 3px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -172,8 +175,9 @@ a {
   background: var(--surface-2);
 }
 .nav-item.nav-active {
-  color: #9bf2d0;
-  background: var(--green-soft);
+  color: #9a4700;
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
 }
 .sidebar-footer {
   margin-top: auto;
@@ -203,7 +207,7 @@ a {
 }
 .connection-dot.online {
   background: var(--green);
-  box-shadow: 0 0 0 4px rgba(66, 212, 154, 0.12);
+  box-shadow: 0 0 0 4px rgba(22, 138, 91, 0.12);
 }
 .connection-dot.offline {
   background: var(--red);
@@ -232,7 +236,7 @@ a {
 .eyebrow,
 .section-label {
   margin: 0 0 7px;
-  color: var(--green);
+  color: var(--accent-hover);
   text-transform: uppercase;
   letter-spacing: 0.15em;
   font-size: 0.66rem;
@@ -383,7 +387,7 @@ a {
   align-items: center;
   max-width: max-content;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-3);
   color: var(--muted);
   font-size: 0.66rem;
@@ -397,19 +401,19 @@ a {
 .badge-running,
 .badge-completed,
 .badge-loaded {
-  color: #87e9c1;
+  color: #08623d;
   background: var(--green-soft);
 }
 .badge-review,
 .badge-paused,
 .badge-open,
 .badge-escalated {
-  color: #ffd08a;
+  color: #834400;
   background: var(--amber-soft);
 }
 .badge-high,
 .badge-failed {
-  color: #ffaca5;
+  color: #a5221a;
   background: var(--red-soft);
 }
 .risk-score {
@@ -442,7 +446,7 @@ a {
 .button {
   min-height: 38px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 0;
   padding: 8px 13px;
   display: inline-flex;
   align-items: center;
@@ -457,11 +461,11 @@ a {
   cursor: not-allowed;
 }
 .button-primary {
-  background: var(--green);
-  color: #05100c;
+  background: var(--accent);
+  color: var(--text);
 }
 .button-primary:hover:not(:disabled) {
-  background: #65e2b2;
+  background: #e87317;
 }
 .button-secondary {
   border-color: var(--line);
@@ -478,13 +482,13 @@ a {
 }
 .button-danger {
   background: var(--red-soft);
-  color: #ffb7b0;
-  border-color: #63302c;
+  color: #a5221a;
+  border-color: #e5a5a0;
 }
 .text-button {
   border: 0;
   background: none;
-  color: var(--green);
+  color: var(--accent-hover);
   font-size: 0.77rem;
   cursor: pointer;
 }
@@ -494,7 +498,7 @@ a {
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
   cursor: pointer;
 }
@@ -516,13 +520,13 @@ th {
 td {
   padding: 11px;
   border-bottom: 1px solid var(--line-soft);
-  color: #c9d5d1;
+  color: #3d4652;
 }
 tbody tr:last-child td {
   border-bottom: 0;
 }
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.016);
+  background: #fff8f2;
 }
 .table-scroll {
   overflow: auto;
@@ -543,7 +547,7 @@ tbody tr:hover {
   gap: 8px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
   color: var(--faint);
 }
@@ -576,10 +580,10 @@ tbody tr:hover {
   margin-bottom: 18px;
   padding: 13px 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(13, 25, 22, 0.95);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(16px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(32, 33, 36, 0.08);
 }
 .filter-bar fieldset {
   padding: 0;
@@ -613,7 +617,7 @@ tbody tr:hover {
   height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
@@ -625,9 +629,9 @@ tbody tr:hover {
   opacity: 0;
 }
 .filter-chip.selected {
-  border-color: #347b62;
-  color: #a4efd2;
-  background: var(--green-soft);
+  border-color: var(--accent-hover);
+  color: #8a3f00;
+  background: var(--accent-soft);
 }
 .filter-locked {
   opacity: 0.8;
@@ -636,14 +640,14 @@ tbody tr:hover {
   display: inline-flex;
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
 }
 .segmented-control button {
   height: 27px;
   padding: 0 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--muted);
   background: transparent;
   font-size: 0.7rem;
@@ -654,7 +658,7 @@ tbody tr:hover {
 .segmented-control button[aria-pressed="true"] {
   background: var(--surface-3);
   color: var(--text);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(32, 33, 36, 0.12);
 }
 .workspace,
 .realtime-workspace,
@@ -679,7 +683,7 @@ tbody tr:hover {
 }
 .tabs button.active {
   color: var(--text);
-  border-bottom-color: var(--green);
+  border-bottom-color: var(--accent);
 }
 .single-layout {
   display: grid;
@@ -696,7 +700,7 @@ tbody tr:hover {
 .method-card {
   padding: 11px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
   color: var(--muted);
   cursor: pointer;
@@ -713,9 +717,9 @@ tbody tr:hover {
   color: var(--faint);
 }
 .method-card.active {
-  border-color: #347b62;
-  background: var(--green-soft);
-  color: #b2f2da;
+  border-color: var(--accent-hover);
+  background: var(--accent-soft);
+  color: #8a3f00;
 }
 .field {
   display: grid;
@@ -738,7 +742,7 @@ tbody tr:hover {
 .compact-field select {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 9px 10px;
   background: var(--surface-2);
   color: var(--text);
@@ -774,9 +778,9 @@ tbody tr:hover {
 .drop-zone {
   width: 100%;
   min-height: 155px;
-  border: 1px dashed #315047;
-  border-radius: 11px;
-  background: rgba(17, 36, 30, 0.6);
+  border: 1px dashed #aeb3ba;
+  border-radius: 0;
+  background: #fafafa;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -786,8 +790,8 @@ tbody tr:hover {
   cursor: pointer;
 }
 .drop-zone:hover {
-  border-color: var(--green);
-  background: var(--green-soft);
+  border-color: var(--accent-hover);
+  background: var(--accent-soft);
 }
 .drop-zone strong {
   color: var(--text);
@@ -848,7 +852,7 @@ tbody tr:hover {
   position: relative;
   padding: 17px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 0;
   background: var(--surface);
   overflow: hidden;
 }
@@ -949,7 +953,7 @@ tbody tr:hover {
 .queue-position {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 0;
   display: grid;
   place-items: center;
   background: var(--surface-2);
@@ -975,7 +979,7 @@ tbody tr:hover {
 .histogram-bar {
   width: 100%;
   min-height: 3px;
-  border-radius: 4px 4px 1px 1px;
+  border-radius: 0;
   background: linear-gradient(to top, #2d8b69, var(--green));
 }
 .histogram > div:nth-last-child(-n + 2) .histogram-bar {
@@ -997,13 +1001,13 @@ tbody tr:hover {
   height: 6px;
   flex: 1;
   background: var(--surface-3);
-  border-radius: 999px;
+  border-radius: 0;
   overflow: hidden;
 }
 .progress-track span {
   display: block;
   height: 100%;
-  background: var(--green);
+  background: var(--accent);
   transition: width 0.2s;
 }
 .batch-layout .stats-grid {
@@ -1041,9 +1045,9 @@ tbody tr:hover {
   width: min(760px, 100%);
   height: 100%;
   overflow: auto;
-  background: #0a1512;
+  background: var(--bg);
   border-left: 1px solid var(--line);
-  box-shadow: -30px 0 80px rgba(0, 0, 0, 0.35);
+  box-shadow: -16px 0 40px rgba(32, 33, 36, 0.16);
 }
 .drawer-header {
   position: sticky;
@@ -1053,7 +1057,7 @@ tbody tr:hover {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  background: rgba(10, 21, 18, 0.96);
+  background: rgba(255, 255, 255, 0.97);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
 }
@@ -1083,7 +1087,7 @@ tbody tr:hover {
   padding: 9px;
   background: var(--surface);
   border: 1px solid var(--line-soft);
-  border-radius: 8px;
+  border-radius: 0;
   display: grid;
   gap: 4px;
 }
@@ -1105,7 +1109,7 @@ tbody tr:hover {
 .investigation-models article {
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--surface);
   display: grid;
   gap: 12px;
@@ -1165,7 +1169,7 @@ tbody tr:hover {
   width: 11px;
   height: 11px;
   margin-top: 3px;
-  border: 2px solid var(--green);
+  border: 2px solid var(--accent);
   background: var(--surface);
   border-radius: 50%;
   z-index: 1;
@@ -1186,20 +1190,20 @@ tbody tr:hover {
 .callout {
   padding: 16px 18px;
   margin-bottom: 12px;
-  border: 1px solid #345246;
-  border-radius: var(--radius);
-  background: linear-gradient(100deg, var(--green-soft), var(--surface));
+  border: 1px solid #f4b47e;
+  border-radius: 0;
+  background: linear-gradient(100deg, var(--accent-soft), var(--surface));
   display: flex;
   align-items: center;
   gap: 25px;
 }
 .callout strong {
   min-width: max-content;
-  color: #a8efd3;
+  color: #8a3f00;
 }
 .callout p {
   margin: 0;
-  color: #a9b9b4;
+  color: var(--muted);
   font-size: 0.77rem;
   line-height: 1.5;
 }
@@ -1233,15 +1237,15 @@ tbody tr:hover {
 }
 .metric-bars > div > div {
   height: 7px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface-3);
   overflow: hidden;
 }
 .metric-bars i {
   height: 100%;
   display: block;
-  border-radius: 999px;
-  background: var(--green);
+  border-radius: 0;
+  background: var(--accent);
 }
 .guidance-list {
   margin: 0;
@@ -1263,7 +1267,7 @@ tbody tr:hover {
 .confusion-card {
   padding: 11px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
 }
 .confusion-card header {
@@ -1284,7 +1288,7 @@ tbody tr:hover {
 }
 .matrix > * {
   padding: 5px;
-  border-radius: 4px;
+  border-radius: 0;
   text-align: center;
 }
 .matrix b {
@@ -1297,15 +1301,15 @@ tbody tr:hover {
 }
 .matrix-low {
   background: var(--green-soft);
-  color: #a6efd2;
+  color: #08623d;
 }
 .matrix-high {
   background: var(--red-soft);
-  color: #ffaca5;
+  color: #a5221a;
 }
 .matrix-review {
   background: var(--amber-soft);
-  color: #ffd08a;
+  color: #834400;
 }
 .matrix-miss {
   background: var(--surface-3);
@@ -1318,7 +1322,7 @@ tbody tr:hover {
 .feature-card {
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--surface-2);
   min-width: 0;
 }
@@ -1350,8 +1354,8 @@ tbody tr:hover {
 }
 .feature-card li i {
   height: 4px;
-  border-radius: 99px;
-  background: var(--green);
+  border-radius: 0;
+  background: var(--accent);
 }
 .health-grid {
   display: grid;
@@ -1362,7 +1366,7 @@ tbody tr:hover {
 .health-card {
   padding: 16px;
   border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
+  border-radius: 0;
   background: var(--surface);
   display: flex;
   align-items: center;
@@ -1393,7 +1397,7 @@ tbody tr:hover {
 }
 .health-icon.healthy {
   background: var(--green);
-  box-shadow: 0 0 0 5px rgba(66, 212, 154, 0.12);
+  box-shadow: 0 0 0 5px rgba(22, 138, 91, 0.12);
 }
 .health-icon.warning {
   background: var(--amber);
@@ -1450,7 +1454,7 @@ tbody tr:hover {
   height: 6px;
   max-width: 100%;
   min-width: 1px;
-  border-radius: 99px;
+  border-radius: 0;
   background: var(--green);
 }
 .mini-bars .bar-high {
@@ -1502,7 +1506,7 @@ tbody tr:hover {
     display: flex;
     padding: 13px 14px;
     border-bottom: 1px solid var(--line-soft);
-    background: #091411;
+    background: var(--surface);
   }
   .mobile-brand .brand-mark {
     width: 32px;
@@ -1513,7 +1517,7 @@ tbody tr:hover {
     display: flex;
     z-index: 50;
     inset: auto 0 0;
-    background: rgba(9, 20, 17, 0.96);
+    background: rgba(255, 255, 255, 0.97);
     border-top: 1px solid var(--line);
     backdrop-filter: blur(12px);
     overflow: auto;
@@ -1531,7 +1535,7 @@ tbody tr:hover {
     font-size: 0.55rem;
   }
   .mobile-nav button.nav-active {
-    color: var(--green);
+    color: var(--accent-hover);
   }
   .page-header {
     flex-direction: column;

@@ -55,12 +55,12 @@ per second. Start, pause, resume, stop, and confirmed restart call the FastAPI
 stream controls. Active filters lock while a run is loading, running, or
 stopping. A paused or stopped run may be reconfigured.
 
-One `EventSource` connects directly to `/stream/events` on Render. Transaction
-arrival and completion events update the live queue, prediction table, counts,
-throughput, average/p95 latency, alert count, risk distribution, and agreement.
-The queue is never truncated by the backend; if inference falls behind, the
-visible backlog grows. Actual labels appear only in completed demonstration
-events, after prediction.
+One `EventSource` connects directly to `/stream/events` on the FastAPI cloud
+deployment. Transaction arrival and completion events update the live queue,
+prediction table, counts, throughput, average/p95 latency, alert count, risk
+distribution, and agreement. The queue is never truncated by the backend; if
+inference falls behind, the visible backlog grows. Actual labels appear only in
+completed demonstration events, after prediction.
 
 ## Alerts and analyst actions
 
@@ -108,6 +108,20 @@ offline states are present. Controls have labels, focus styles, keyboard access,
 and text/icons in addition to green, amber, and red risk colours. Close and
 restart actions require confirmation.
 
+## Visual design
+
+The console uses a complete light theme inspired by Cloudflare's operational
+dashboards. White and light-neutral surfaces, restrained borders, dark text,
+and orange product accents provide a dense professional workspace. Cards,
+buttons, inputs, badges, filters, drawers, tables, and progress indicators use
+square corners. Circular geometry is limited to semantic status dots and the
+model-agreement ring.
+
+Orange communicates navigation, selection, focus, and primary actions. It does
+not replace fraud-risk semantics: green remains low risk, amber means review,
+and red means high risk or failure. This separation prevents the product brand
+colour from being mistaken for a model decision.
+
 ## Configuration and security
 
 The only frontend environment setting is public:
@@ -116,7 +130,7 @@ The only frontend environment setting is public:
 VITE_API_URL=http://localhost:8000
 ```
 
-For Cloudflare Pages set it to the HTTPS Render origin. Never add the Supabase
+For Cloudflare Pages set it to the HTTPS FastAPI origin. Never add the Supabase
 secret, R2 credentials, or model objects to a `VITE_*` variable. The browser
 uses FastAPI for Supabase and R2 operations. FastAPI CORS must contain the exact
 Pages origin. `_headers` supplies CSP, frame, MIME, referrer, permissions, and
@@ -157,7 +171,7 @@ verification are intentionally deferred to Milestone 5.
 
 ## Troubleshooting
 
-- API shown offline: check `VITE_API_URL`, `/health`, Render status, and CORS.
+- API shown offline: check `VITE_API_URL`, `/health`, cloud-host status, and CORS.
 - Alert or stream unavailable: set server-only Supabase variables on FastAPI and
   upload a ready demonstration dataset.
 - Stream events do not move: confirm the Pages CSP permits the Render origin and

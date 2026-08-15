@@ -29,6 +29,23 @@ def test_health_reports_eight_registered_models_without_secrets() -> None:
     }
 
 
+def test_app_starts_and_stops_with_supabase_configured() -> None:
+    settings = Settings(
+        supabase_url="https://project-test-only.supabase.co",
+        supabase_secret_key="sb_secret_test-only",
+        r2_endpoint_url=None,
+        r2_access_key_id=None,
+        r2_secret_access_key=None,
+        r2_bucket_name=None,
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["supabase_configured"] is True
+
+
 def test_model_catalog_uses_canonical_v1_v2_names() -> None:
     client = TestClient(create_app(Settings()))
 

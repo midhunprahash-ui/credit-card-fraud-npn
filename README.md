@@ -163,3 +163,6 @@ The six-page Fraud Intelligence Console, shared filters, manual and batch
 workflows, alert investigation, model comparison, monitoring, and frontend test
 commands are documented in
 [docs/MILESTONE_4_FRONTEND_GUIDE.md](docs/MILESTONE_4_FRONTEND_GUIDE.md).
+The private R2 layout, lazy verified model cache, Render runtime, Cloudflare
+Pages release, Supabase cloud dataset, and deployment checklist are documented
+in [docs/MILESTONE_5_CLOUD_DEPLOYMENT.md](docs/MILESTONE_5_CLOUD_DEPLOYMENT.md).

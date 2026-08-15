@@ -14,14 +14,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_model_catalog() -> list[dict[str, Any]]:
+    public_catalog = _read_public_catalog()
     catalog = []
     for spec in ModelRegistry.load(PROJECT_ROOT):
+        fallback = public_catalog.get(spec.identifier, {})
         metrics = _read_json(spec.artifact_directory / "metrics.json")
         training = _read_json(spec.artifact_directory / "training_config.json")
         top_features = _read_top_features(spec.artifact_directory)
-        test_metrics = metrics.get("test", {})
+        if not metrics:
+            metrics = {
+                "validation": fallback.get("metrics", {}).get("validation"),
+                "test": fallback.get("metrics", {}).get("test"),
+            }
+        if not training:
+            training = {
+                "training_seconds": fallback.get("metrics", {}).get(
+                    "training_seconds"
+                ),
+            }
+        if not top_features:
+            top_features = list(fallback.get("top_features", []))
+        test_metrics = metrics.get("test") or {}
         test_rows = test_metrics.get("rows")
         prediction_seconds = training.get("test_prediction_seconds")
+        fallback_latency = fallback.get("metrics", {}).get(
+            "prediction_latency_ms"
+        )
         catalog.append(
             {
                 "model_key": spec.model_key,
@@ -41,7 +59,7 @@ def load_model_catalog() -> list[dict[str, Any]]:
                     "prediction_latency_ms": (
                         float(prediction_seconds) * 1_000 / int(test_rows)
                         if prediction_seconds is not None and test_rows
-                        else None
+                        else fallback_latency
                     ),
                 },
                 "feature_importance_available": bool(top_features),
@@ -49,6 +67,20 @@ def load_model_catalog() -> list[dict[str, Any]]:
             }
         )
     return catalog
+
+
+def _read_public_catalog() -> dict[str, dict[str, Any]]:
+    path = PROJECT_ROOT / "config/model_catalog.json"
+    if not path.is_file():
+        return {}
+    document = json.loads(path.read_text())
+    if not isinstance(document, list):
+        raise ValueError("Public model catalog must be a list")
+    return {
+        str(item["model_identifier"]): item
+        for item in document
+        if isinstance(item, dict) and "model_identifier" in item
+    }
 
 
 def _read_json(path: Path) -> dict[str, Any]:

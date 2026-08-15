@@ -36,40 +36,44 @@ Held-out labels are stored separately from inference payloads. The backend reads
 the next transaction in `TransactionDT`, `TransactionID` order, scores a payload
 that cannot contain `isFraud`, and only then reads/reveals the ground truth.
 
-At API startup, the service reads a registry from private R2 storage, downloads
-the approved bundles, verifies SHA-256 checksums, loads all four models, and
-runs smoke predictions. `/health` becomes ready only after every enabled model
-passes.
+At startup, the service reads the two Git-versioned registries and the
+Git-pinned deployment contract. It does not download or load all eight models.
+When a selected model is first requested, Render downloads only that immutable
+R2 bundle, verifies the pinned manifest plus every file size and SHA-256, and
+then loads its adapter. The bounded LRU manager limits in-memory models.
 
 ## Why the backend remains on Render
 
 Cloudflare Pages is excellent for the static React frontend, and R2 is suitable
 for object storage. The four models require Python, native ML libraries, and
-more memory than a lightweight edge function. Render will run the containerized
-FastAPI process with pinned training-compatible package versions.
+more memory than a lightweight edge function. Render runs the native FastAPI
+process with pinned inference libraries and CPU-only PyTorch.
 
-## Planned API endpoints
+## Core API endpoints
 
 ```text
 GET  /health
 GET  /models
-GET  /schema
+GET  /input-schema
+GET  /demo-transactions
+GET  /transactions/{transaction_id}
 POST /predict
-POST /predict-batch
+POST /predict/batch
+POST /stream/start
+GET  /stream/events
 ```
 
-`POST /predict` accepts one normalized transaction, creates missing optional
-fields, applies shared features, invokes all four wrappers, and returns four
-separate probabilities plus agreement metadata.
+`POST /predict` accepts one raw transaction, creates missing optional fields,
+applies the selected V1/V2 features separately, and returns independent
+fraud-risk scores plus visual agreement metadata.
 
-## Planned frontend pages
+## Frontend pages
 
-- Single-transaction form for understandable demo fields.
-- Full JSON input for the complete schema.
-- CSV batch upload and analyst queue.
-- Four side-by-side model cards and probability chart.
-- Input completeness and identity availability.
-- Model evaluation and EDA reference pages.
+- Overview, Live Analysis, Fraud Alerts, Batch Analysis, Model Comparison, and
+  Monitoring.
+- Real transaction, simplified form, complete JSON, one-row CSV, batch CSV, and
+  strict FIFO replay inputs.
+- Independent V1/V2 scores, thresholds, agreement, completeness, and health.
 
 ## Secrets
 
@@ -80,9 +84,9 @@ API base URL; R2 secrets must never be shipped to the browser.
 ## Deployment order
 
 1. Produce and compare valid model runs.
-2. Approve one run per model and write `registry.json`.
+2. Approve one run per model in both V1/V2 registries.
 3. Upload approved bundles to private R2.
-4. Implement and test the four model wrappers locally.
+4. Verify all eight adapters and the deployment artifact contract locally.
 5. Build the FastAPI container and deploy it to Render.
 6. Build the React/Vite dashboard and deploy it to Cloudflare Pages.
 7. Verify health, CORS, single prediction, batch prediction, and failure states.

@@ -12,6 +12,35 @@ from botocore.exceptions import BotoCoreError, ClientError
 from .settings import Settings
 
 
+def create_r2_client(settings: Settings, *, healthcheck: bool = False):
+    endpoint = settings.r2_endpoint_url
+    access_key = settings.r2_access_key_id
+    secret_key = settings.r2_secret_access_key
+    assert endpoint is not None
+    assert access_key is not None
+    assert secret_key is not None
+    return boto3.client(
+        service_name="s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key.get_secret_value(),
+        aws_secret_access_key=secret_key.get_secret_value(),
+        region_name="auto",
+        config=(
+            Config(
+                connect_timeout=3,
+                read_timeout=5,
+                retries={"max_attempts": 1, "mode": "standard"},
+            )
+            if healthcheck
+            else Config(
+                connect_timeout=10,
+                read_timeout=120,
+                retries={"max_attempts": 3, "mode": "standard"},
+            )
+        ),
+    )
+
+
 class R2Gateway:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -26,18 +55,7 @@ class R2Gateway:
         assert secret_key is not None
         assert bucket is not None
 
-        client = boto3.client(
-            service_name="s3",
-            endpoint_url=endpoint,
-            aws_access_key_id=access_key.get_secret_value(),
-            aws_secret_access_key=secret_key.get_secret_value(),
-            region_name="auto",
-            config=Config(
-                connect_timeout=3,
-                read_timeout=5,
-                retries={"max_attempts": 1, "mode": "standard"},
-            ),
-        )
+        client = create_r2_client(self._settings, healthcheck=True)
         client.head_bucket(Bucket=bucket)
         return {
             "configured": True,

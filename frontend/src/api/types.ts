@@ -50,6 +50,8 @@ export type Health = {
   model_artifacts_available: number;
   supabase_configured: boolean;
   r2_configured: boolean;
+  artifact_source: "local" | "r2_lazy_cache";
+  behavioral_reference_available: boolean;
 };
 
 export type ModelPrediction = {

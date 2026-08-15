@@ -49,7 +49,13 @@ def test_r2_gateway_lists_private_bucket_with_auto_region(monkeypatch) -> None:
 
 
 def test_r2_gateway_reports_unconfigured_without_network_access() -> None:
-    result = asyncio.run(R2Gateway(Settings()).check_connection())
+    settings = Settings(
+        r2_endpoint_url=None,
+        r2_access_key_id=None,
+        r2_secret_access_key=None,
+        r2_bucket_name=None,
+    )
+    result = asyncio.run(R2Gateway(settings).check_connection())
 
     assert result == {
         "configured": False,

@@ -1,0 +1,70 @@
+{
+  "models": {
+    "catboost.v1": {
+      "bytes": 195881014,
+      "files": 10,
+      "manifest_sha256": "79306e6134529aa4046a1141dfaf3160116d750e4ac5be1c246d429aac5ca5cc",
+      "object_prefix": "models/v1/catboost/20260814T043639Z",
+      "run_id": "20260814T043639Z"
+    },
+    "catboost.v2": {
+      "bytes": 496806111,
+      "files": 11,
+      "manifest_sha256": "84792b55a11085da5ebebc035f141c653da5d78c05db56ffb1452b8a2d84b9b4",
+      "object_prefix": "models/v2/catboost/20260815T121042Z",
+      "run_id": "20260815T121042Z"
+    },
+    "lightgbm.v1": {
+      "bytes": 38678849,
+      "files": 10,
+      "manifest_sha256": "47619ca0e25ca1a19d224eec982efaa844c936884a73df0e5f9598f91508379b",
+      "object_prefix": "models/v1/lightgbm/20260814T050814Z",
+      "run_id": "20260814T050814Z"
+    },
+    "lightgbm.v2": {
+      "bytes": 81129521,
+      "files": 11,
+      "manifest_sha256": "6b111b9db4f2f061db3fe5f06a76cc280f9e294707fdef05933c5f7c2354f6a2",
+      "object_prefix": "models/v2/lightgbm/20260815T061730Z",
+      "run_id": "20260815T061730Z"
+    },
+    "logistic_regression.v1": {
+      "bytes": 3089934,
+      "files": 9,
+      "manifest_sha256": "9254a9dbd80cc2b36453b88cbd8bd154f8e2064bb300cf3823c0d782507c0c44",
+      "object_prefix": "models/v1/logistic_regression/20260814T044445Z",
+      "run_id": "20260814T044445Z"
+    },
+    "logistic_regression.v2": {
+      "bytes": 5136567,
+      "files": 9,
+      "manifest_sha256": "1e9d23fb291a6c0539666c4f9f3ee6cdc64bbcf97c40e0975d024d1bf3c9c30f",
+      "object_prefix": "models/v2/logistic_regression/20260815T133526Z",
+      "run_id": "20260815T133526Z"
+    },
+    "neural_network.v1": {
+      "bytes": 4282127,
+      "files": 12,
+      "manifest_sha256": "721832d2e43ee412ffe01524a0dfd43332c355584be843d4a4daf7da0baa71e5",
+      "object_prefix": "models/v1/neural_network/20260814T051404Z",
+      "run_id": "20260814T051404Z"
+    },
+    "neural_network.v2": {
+      "bytes": 9878003,
+      "files": 11,
+      "manifest_sha256": "d98ec60d87853c17a6036d78ba38c4f59045690905bb8219d9c373df3e556049",
+      "object_prefix": "models/v2/neural_network/20260815T130503Z",
+      "run_id": "20260815T130503Z"
+    }
+  },
+  "r2_prefix": "models",
+  "runtime": {
+    "behavioral_reference.v2": {
+      "bytes": 21894780,
+      "local_path": "data/processed/v2/behavioral_reference.joblib",
+      "object_key": "models/runtime/v2/behavioral_reference.joblib",
+      "sha256": "36d9fa05811359b7d7c579a27fe149d4cc4494b0a0018de922dd8db611a366bb"
+    }
+  },
+  "schema_version": "1.0"
+}

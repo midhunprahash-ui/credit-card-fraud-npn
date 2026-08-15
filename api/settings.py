@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     behavioral_reference_path: Path = Path(
         "data/processed/v2/behavioral_reference.joblib"
     )
+    deployment_artifact_contract_path: Path = Path(
+        "config/deployment_artifacts.json"
+    )
     model_cache_size: int = Field(default=2, ge=1, le=8)
     batch_max_file_bytes: int = Field(default=5_000_000, ge=1)
     batch_max_rows: int = Field(default=1_000, ge=1, le=10_000)

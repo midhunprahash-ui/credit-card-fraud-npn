@@ -1,24 +1,28 @@
 services:
   - type: web
-    name: npn-fraud-analyst-api
+    name: credit-card-fraud-npn
     repo: https://github.com/midhunprahash-ui/credit-card-fraud-npn
     runtime: python
     plan: free
-    region: singapore
+    region: oregon
     branch: main
     autoDeploy: true
-    buildCommand: pip install --disable-pip-version-check -r requirements-api.txt
+    buildCommand: pip install --disable-pip-version-check -r requirements-render.txt && pip install --disable-pip-version-check torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: PYTHON_VERSION
         value: 3.12.11
       - key: CORS_ORIGINS
         sync: false
       - key: MODEL_CACHE_SIZE
         value: "2"
+      - key: DEPLOYMENT_ARTIFACT_CONTRACT_PATH
+        value: config/deployment_artifacts.json
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY

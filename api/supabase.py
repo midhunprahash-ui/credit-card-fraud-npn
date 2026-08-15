@@ -19,10 +19,9 @@ class SupabaseGateway:
 
         secret = self._settings.supabase_secret_key
         assert secret is not None
-        headers = {
-            "apikey": secret.get_secret_value(),
-            "Authorization": f"Bearer {secret.get_secret_value()}",
-        }
+        # Supabase's sb_secret_* keys authenticate through ``apikey``. They are
+        # not JWTs and must not be presented as Authorization bearer tokens.
+        headers = {"apikey": secret.get_secret_value()}
         url = f"{self._settings.supabase_url.rstrip('/')}/rest/v1/stream_datasets"
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -39,4 +38,3 @@ class SupabaseGateway:
                 "detail": type(exc).__name__,
             }
         return {"configured": True, "reachable": True, "detail": "ok"}
-

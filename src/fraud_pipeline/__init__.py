@@ -17,6 +17,8 @@ from .preprocessing import (
     build_logistic_preprocessor,
     infer_feature_groups,
 )
+from .model_contracts import MODEL_DISPLAY_NAMES, MODEL_ORDER, VERSION_ORDER
+from .registry import ModelRegistry, ModelSpec
 
 __all__ = [
     "IDENTIFIER_COLUMNS",
@@ -33,4 +35,9 @@ __all__ = [
     "NeuralTabularPreprocessor",
     "build_logistic_preprocessor",
     "infer_feature_groups",
+    "MODEL_DISPLAY_NAMES",
+    "MODEL_ORDER",
+    "VERSION_ORDER",
+    "ModelRegistry",
+    "ModelSpec",
 ]

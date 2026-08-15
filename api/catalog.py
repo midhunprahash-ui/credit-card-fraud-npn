@@ -1,49 +1,29 @@
-"""Read the approved V1/V2 registries and expose canonical model names."""
+"""Expose the canonical public catalog for the eight approved model runs."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
-
-VersionName = Literal["V1", "V2"]
+from src.fraud_pipeline.model_contracts import VersionName
+from src.fraud_pipeline.registry import ModelRegistry
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REGISTRIES: dict[VersionName, Path] = {
-    "V1": PROJECT_ROOT / "config" / "model_registry.json",
-    "V2": PROJECT_ROOT / "config" / "model_registry_v2.json",
-}
-DISPLAY_NAMES = {
-    "logistic_regression": "Logistic Regression",
-    "lightgbm": "LightGBM",
-    "catboost": "CatBoost",
-    "neural_network": "Neural Network",
-}
-MODEL_ORDER = tuple(DISPLAY_NAMES)
 
 
 def load_model_catalog() -> list[dict[str, Any]]:
-    catalog: list[dict[str, Any]] = []
-    for version_name, registry_path in REGISTRIES.items():
-        registry = json.loads(registry_path.read_text())
-        registered_models = registry.get("models", {})
-        for model_key in MODEL_ORDER:
-            config = registered_models.get(model_key)
-            if not config or not config.get("enabled"):
-                raise ValueError(f"Required model is not enabled: {model_key}.{version_name}")
-            display_name = DISPLAY_NAMES[model_key]
-            catalog.append(
-                {
-                    "model_key": model_key,
-                    "model_name": f"{display_name}.{version_name}",
-                    "display_name": display_name,
-                    "version_name": version_name,
-                    "run_id": config["run_id"],
-                    "threshold": config["threshold"],
-                    "validation_pr_auc": config["validation_pr_auc"],
-                    "test_pr_auc": config["test_pr_auc"],
-                }
-            )
-    return catalog
-
+    return [
+        {
+            "model_key": spec.model_key,
+            "model_identifier": spec.identifier,
+            "model_name": spec.model_name,
+            "display_name": spec.model_name.rsplit(".", 1)[0],
+            "version_name": spec.version_name,
+            "run_id": spec.run_id,
+            "threshold": spec.threshold,
+            "champion": spec.champion,
+            "validation_pr_auc": spec.validation_pr_auc,
+            "test_pr_auc": spec.test_pr_auc,
+        }
+        for spec in ModelRegistry.load(PROJECT_ROOT)
+    ]

@@ -1,16 +1,16 @@
 # Credit Card Fraud Detection — NPN Hackathon
 
-An end-to-end fraud-risk scoring application built with the IEEE-CIS Fraud Detection dataset. The project combines transaction information with device and identity signals, predicts the probability of fraud, and presents the result in an analyst-friendly dashboard.
+An end-to-end fraud-risk scoring application built with the IEEE-CIS Fraud Detection dataset. The project combines transaction information with device and identity signals, produces a fraud-risk score, and presents the result in an analyst-friendly dashboard.
 
 ## Project goal
 
-Banks need to identify suspicious e-commerce payments quickly while avoiding unnecessary blocks of genuine customers. This application uses **supervised binary classification** to assign every transaction a fraud probability.
+Banks need to identify suspicious e-commerce payments quickly while avoiding unnecessary blocks of genuine customers. This application uses **supervised binary classification** to assign every transaction a fraud-risk score.
 
 | Item | Meaning |
 | --- | --- |
 | Input | Transaction, card, email, address, device, browser, and identity attributes |
 | Target | `isFraud` (`1` fraudulent, `0` legitimate) |
-| Output | Fraud probability, risk level, recommended action, and model explanation |
+| Output | Fraud-risk score, model-specific decision, latency, and model explanation |
 | Models shown | Logistic Regression, LightGBM, CatBoost, and tabular neural network |
 | Deployment target | FastAPI multi-model API on Render and React analyst dashboard on Cloudflare |
 
@@ -27,9 +27,9 @@ Time-based train / validation / test split
         ↓
 Four class-weighted fraud classifiers
         ↓
-Four saved model bundles and feature schemas
+Eight approved V1/V2 model bundles and feature schemas
         ↓
-FastAPI four-model scoring service → React analyst dashboard → Cloud deployment
+FastAPI eight-pipeline scoring service → React analyst dashboard → Cloud deployment
 ```
 
 ## Repository structure
@@ -69,9 +69,11 @@ sample_submission.csv     # Submission format example
 
 ## Model decision
 
-The project is a binary classifier. Instead of returning only fraud/not fraud, it first produces a probability such as `0.82`.
+The project is a binary classifier. Instead of returning only fraud/not fraud,
+each selected model first produces a fraud-risk score. These scores are not
+described as calibrated probabilities unless calibration is verified.
 
-| Probability | Risk level | Suggested action |
+| Example score band | Risk level | Suggested action |
 | ---: | --- | --- |
 | ≥ 0.85 | High | Block or urgently investigate |
 | 0.60–0.85 | Medium | Send to manual review |
@@ -137,8 +139,8 @@ Share [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md) with mo
 
 - **Training:** Lightning AI.
 - **Model storage:** private Cloudflare R2 bucket.
-- **Backend:** FastAPI on Render; loads all four models and scores one common input independently.
-- **Frontend:** React/Vite on Cloudflare Pages; displays four outputs side by side.
+- **Backend:** FastAPI on Render; lazily loads requested approved models and scores one common input independently.
+- **Frontend:** React/Vite on Cloudflare Pages; compares selected V1/V2 outputs side by side.
 
 See [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md).
 
@@ -149,3 +151,5 @@ settings, secret boundaries and local verification commands are explained in
 Before adding prediction workflows to the React application, run the required
 eight-pipeline check in
 [docs/MODEL_VERIFICATION_GATE.md](docs/MODEL_VERIFICATION_GATE.md).
+The completed local inference foundation and its known boundaries are recorded
+in [docs/MILESTONE_1_INFERENCE_REPORT.md](docs/MILESTONE_1_INFERENCE_REPORT.md).

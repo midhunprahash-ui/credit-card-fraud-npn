@@ -8,6 +8,7 @@
 | Store private model bundles | Cloudflare R2 |
 | Serve Python model inference | FastAPI on Render |
 | Host analyst web application | React/Vite on Cloudflare Pages |
+| Store stream data and analyst records | Supabase Postgres |
 | Source and deployment trigger | GitHub |
 
 Streamlit is not part of the final architecture.
@@ -16,8 +17,10 @@ Streamlit is not part of the final architecture.
 
 ```text
 React dashboard on Cloudflare Pages
-              ↓ HTTPS
+              ↓ HTTPS + direct Render SSE
 FastAPI service on Render
+              ├── Supabase stream/prediction/alert/action records
+              ├── private Cloudflare R2 model bundles
               ↓
 Common schema and shared feature builder
               ↓
@@ -25,6 +28,13 @@ Four model-specific preprocessors and models in memory
               ↓
 Four predictions returned to the dashboard
 ```
+
+Supabase Realtime is not used for dashboard delivery. Render owns the FIFO queue
+and sends live prediction events directly to the browser over SSE.
+
+Held-out labels are stored separately from inference payloads. The backend reads
+the next transaction in `TransactionDT`, `TransactionID` order, scores a payload
+that cannot contain `isFraud`, and only then reads/reveals the ground truth.
 
 At API startup, the service reads a registry from private R2 storage, downloads
 the approved bundles, verifies SHA-256 checksums, loads all four models, and

@@ -7,7 +7,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, File, Form, Path as ApiPath, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -26,6 +26,7 @@ from .errors import ApiError
 from .logging_config import configure_logging
 from .r2 import R2Gateway
 from .schemas import (
+    AlertActionRequest,
     BatchPredictionResponse,
     PredictionRequest,
     PredictionResponse,
@@ -40,7 +41,11 @@ from .services import (
     parse_model_identifiers,
 )
 from .settings import Settings, get_settings
-from .stream_repository import SupabaseRestClient, SupabaseStreamRepository
+from .stream_repository import (
+    SupabaseRepositoryError,
+    SupabaseRestClient,
+    SupabaseStreamRepository,
+)
 from .streaming import StreamController
 from .supabase import SupabaseGateway
 
@@ -55,6 +60,7 @@ def create_app(
     batch_service: BatchPredictionService | Any | None = None,
     demo_repository: DemoTransactionRepository | Any | None = None,
     stream_controller: StreamController | Any | None = None,
+    alert_repository: SupabaseStreamRepository | Any | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     configure_logging(active_settings.log_level)
@@ -88,27 +94,35 @@ def create_app(
     )
     supabase_rest_client: SupabaseRestClient | None = None
     active_stream_controller = stream_controller
-    if active_stream_controller is None and active_settings.supabase_configured:
+    active_alert_repository = alert_repository
+    if active_settings.supabase_configured and (
+        active_stream_controller is None or active_alert_repository is None
+    ):
         supabase_rest_client = SupabaseRestClient(active_settings)
-        active_stream_controller = StreamController(
-            SupabaseStreamRepository(supabase_rest_client),
-            registry,
-            model_manager,
-            active_prediction_service,
-            reference_provider,
-            raw_contract,
-        )
+        repository = SupabaseStreamRepository(supabase_rest_client)
+        if active_stream_controller is None:
+            active_stream_controller = StreamController(
+                repository,
+                registry,
+                model_manager,
+                active_prediction_service,
+                reference_provider,
+                raw_contract,
+            )
+        if active_alert_repository is None:
+            active_alert_repository = repository
     r2 = R2Gateway(active_settings)
     supabase = SupabaseGateway(active_settings)
 
     app = FastAPI(
         title="NPN Fraud Intelligence API",
-        version="0.3.0",
-        description="Verified manual and strict-FIFO V1/V2 fraud-risk inference.",
+        version="0.4.0",
+        description="Verified V1/V2 inference and analyst-console API.",
     )
     app.state.model_manager = model_manager
     app.state.metrics = metrics
     app.state.stream_controller = active_stream_controller
+    app.state.alert_repository = active_alert_repository
     if supabase_rest_client is not None:
         app.add_event_handler("shutdown", supabase_rest_client.close)
     app.add_middleware(
@@ -388,6 +402,64 @@ def create_app(
             },
         )
 
+    @app.get("/alerts")
+    async def alerts(
+        status: Literal[
+            "OPEN",
+            "IN_REVIEW",
+            "CONFIRMED_FRAUD",
+            "LEGITIMATE",
+            "ESCALATED",
+            "CLOSED",
+        ]
+        | None = Query(default=None),
+        transaction_id: int | None = Query(default=None, ge=1),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> dict[str, Any]:
+        repository = _require_alert_repository(active_alert_repository)
+        try:
+            items = await repository.list_alerts(
+                limit=limit,
+                status=status,
+                transaction_id=transaction_id,
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "alert_store_unavailable", "Fraud alert history is unavailable"
+            ) from error
+        return {"alerts": items}
+
+    @app.get("/alerts/{alert_id}")
+    async def alert_detail(alert_id: uuid.UUID) -> dict[str, Any]:
+        repository = _require_alert_repository(active_alert_repository)
+        try:
+            item = await repository.get_alert(str(alert_id))
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "alert_store_unavailable", "Fraud alert history is unavailable"
+            ) from error
+        if item is None:
+            raise ApiError(404, "fraud_alert_not_found", "Fraud alert was not found")
+        return item
+
+    @app.post("/alerts/{alert_id}/actions")
+    async def alert_action(
+        alert_id: uuid.UUID, request: AlertActionRequest
+    ) -> dict[str, Any]:
+        repository = _require_alert_repository(active_alert_repository)
+        try:
+            action = await repository.add_alert_action(
+                str(alert_id),
+                action=request.action,
+                analyst_identifier=request.analyst_identifier,
+                note=request.note,
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "alert_store_unavailable", "The analyst action could not be saved"
+            ) from error
+        return {"analyst_action": action}
+
     return app
 
 
@@ -413,6 +485,16 @@ def _require_stream_controller(controller: StreamController | Any | None):
             "Streaming requires server-side Supabase credentials",
         )
     return controller
+
+
+def _require_alert_repository(repository: SupabaseStreamRepository | Any | None):
+    if repository is None:
+        raise ApiError(
+            503,
+            "alert_store_unavailable",
+            "Alert history requires server-side Supabase credentials",
+        )
+    return repository
 
 
 def _format_sse(event_type: str, data: dict[str, Any]) -> str:

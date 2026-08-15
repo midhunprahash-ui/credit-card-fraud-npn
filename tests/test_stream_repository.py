@@ -167,3 +167,35 @@ def test_completed_batch_is_persisted_in_bulk_with_one_alert_per_transaction() -
         assert alert_body[0]["selected_model_count"] == 1
 
     asyncio.run(scenario())
+
+
+def test_analyst_action_updates_alert_status_and_writes_audit_row() -> None:
+    async def scenario() -> None:
+        client = RecordingClient(
+            [
+                [],
+                [
+                    {
+                        "id": "action-1",
+                        "action": "CONFIRMED_FRAUD",
+                        "analyst_identifier": "analyst-7",
+                    }
+                ],
+            ]
+        )
+        repository = SupabaseStreamRepository(client)
+        result = await repository.add_alert_action(
+            "alert-1",
+            action="CONFIRMED_FRAUD",
+            analyst_identifier="analyst-7",
+            note="Reviewed device evidence",
+        )
+        assert result["id"] == "action-1"
+        assert [call[1] for call in client.calls] == [
+            "fraud_alerts",
+            "analyst_actions",
+        ]
+        assert client.calls[0][2]["body"]["status"] == "CONFIRMED_FRAUD"
+        assert client.calls[1][2]["body"]["note"] == "Reviewed device evidence"
+
+    asyncio.run(scenario())

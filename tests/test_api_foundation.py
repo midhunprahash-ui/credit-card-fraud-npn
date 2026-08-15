@@ -47,3 +47,22 @@ def test_model_version_filter_rejects_unknown_versions() -> None:
     response = client.get("/models", params={"version": "V3"})
 
     assert response.status_code == 422
+
+
+def test_model_catalog_exposes_comparison_metrics_when_artifacts_are_local() -> None:
+    client = TestClient(create_app(Settings()))
+
+    response = client.get("/models", params={"version": "V2"})
+
+    assert response.status_code == 200
+    catboost = next(
+        item
+        for item in response.json()["models"]
+        if item["model_identifier"] == "catboost.v2"
+    )
+    assert catboost["metrics"]["validation"]["pr_auc"] == catboost["validation_pr_auc"]
+    assert catboost["metrics"]["test"]["confusion_matrix"] == [
+        [53930, 31568],
+        [201, 2882],
+    ]
+    assert catboost["feature_importance_available"] is True

@@ -133,10 +133,15 @@ Responsibilities:
 
 Responsibilities:
 
-- Single-transaction scoring form.
-- Batch upload and prioritized fraud queue.
-- Four side-by-side model probabilities and decisions.
-- Key performance metrics, input completeness, and explanations.
+- Six analyst pages: Overview, Live Analysis, Fraud Alerts, Batch Analysis,
+  Model Comparison, and Monitoring.
+- Sticky V1/V2 and version-aware model filters with Manual and Real-time modes.
+- Real demonstration transaction, simplified form, JSON, one-row CSV, and batch
+  CSV scoring workflows.
+- Direct Render SSE updates, FIFO backlog visibility, and stream controls.
+- Side-by-side fraud-risk scores, thresholds, agreement, latency, completeness,
+  and saved global feature evidence.
+- Prioritized alert investigation with audited analyst actions and notes.
 
 ## 7. Cloud deployment plan
 
@@ -218,3 +223,4 @@ Do not force-push, rewrite shared history, commit generated data/models, or merg
 | --- | --- | --- |
 | 2026-08-13 | Repository initialized and project plan documented | Codex / team |
 | 2026-08-13 | Two-branch Git workflow adopted | Codex / team |
+| 2026-08-16 | Six-page V1/V2 Fraud Intelligence Console implemented and tested | Codex / team |

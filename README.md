@@ -159,3 +159,7 @@ contracts are documented in
 The strict FIFO held-out replay, Supabase schema, hidden-label boundary, SSE
 contract, reproducible dataset upload, and stream tests are documented in
 [docs/MILESTONE_3_STREAMING_GUIDE.md](docs/MILESTONE_3_STREAMING_GUIDE.md).
+The six-page Fraud Intelligence Console, shared filters, manual and batch
+workflows, alert investigation, model comparison, monitoring, and frontend test
+commands are documented in
+[docs/MILESTONE_4_FRONTEND_GUIDE.md](docs/MILESTONE_4_FRONTEND_GUIDE.md).

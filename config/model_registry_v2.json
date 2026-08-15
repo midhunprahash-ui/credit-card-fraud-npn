@@ -3,7 +3,7 @@
   "version": "2.0",
   "selection_metric": "validation_pr_auc",
   "champion": "catboost",
-  "status": "partial_logistic_regression_pending",
+  "status": "complete_standalone_models",
   "models": {
     "lightgbm": {
       "enabled": true,
@@ -37,8 +37,13 @@
       "test_pr_auc": 0.39132171120605863
     },
     "logistic_regression": {
-      "enabled": false,
-      "status": "training_in_progress"
+      "enabled": true,
+      "run_id": "20260815T133526Z",
+      "artifact_subdirectory": "v2/logistic_regression/20260815T133526Z",
+      "model_file": "model.joblib",
+      "threshold": 0.48411919622634253,
+      "validation_pr_auc": 0.397775355171558,
+      "test_pr_auc": 0.17174003142927416
     },
     "lightgbm_catboost_ensemble": {
       "enabled": false,

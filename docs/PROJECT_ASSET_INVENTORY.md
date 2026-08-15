@@ -24,7 +24,7 @@ credit-card-fraud-npn/
 │       ├── data/                   # Version 2 processed-data package
 │       ├── lightgbm/               # Extracted run and original archive
 │       ├── catboost/               # Selected run, replicate and archives
-│       ├── logistic_regression/     # Reserved; training still running
+│       ├── logistic_regression/     # Extracted Version 2 run and archive
 │       └── neural_network/          # Extracted run and original archive
 ├── config/
 │   ├── model_registry.json         # Approved Version 1 runs
@@ -62,7 +62,7 @@ The selected runs are declared in `config/model_registry.json`.
 | LightGBM | `20260815T061730Z` | 0.653215 | 0.570442 | Complete |
 | CatBoost | `20260815T121042Z` | 0.725072 | 0.607110 | Complete; current V2 champion |
 | Neural network | `20260815T130503Z` | 0.517591 | 0.391322 | Complete |
-| Logistic Regression | — | — | — | Training is still running; output not yet received |
+| Logistic Regression | `20260815T133526Z` | 0.397775 | 0.171740 | Complete |
 | LightGBM + CatBoost ensemble | — | — | — | Deferred by decision; not required now |
 
 CatBoost run `20260815T134805Z` is retained as a valid replicate. It was not
@@ -87,10 +87,7 @@ Every currently saved completed run passed the manifest size and SHA-256 audit.
 
 ## Items not yet available
 
-1. The completed V2 Logistic Regression artifact bundle and executed notebook.
-2. A trained V2 LightGBM–CatBoost ensemble artifact, intentionally deferred.
-3. A final V2 deployment registry with all four models cannot be frozen until
-   V2 Logistic Regression finishes.
+1. A trained V2 LightGBM–CatBoost ensemble artifact, intentionally deferred.
 
-These missing items do not affect the already completed V1 system or the three
-completed standalone V2 models.
+This missing optional item does not affect the already completed V1 system or
+the four completed standalone V2 models.

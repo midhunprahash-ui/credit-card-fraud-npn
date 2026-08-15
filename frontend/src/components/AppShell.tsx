@@ -35,7 +35,7 @@ export function AppShell({
             <Icon name="shield" size={22} />
           </span>
           <div>
-            <strong>NPN</strong>
+            <strong>CYPHER</strong>
             <span>Fraud Intelligence</span>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function AppShell({
             <span className="brand-mark">
               <Icon name="shield" size={20} />
             </span>
-            <strong>NPN Fraud Intelligence</strong>
+            <strong>CYPHER Fraud Intelligence</strong>
           </div>
         </div>
         <main className="content">{children}</main>

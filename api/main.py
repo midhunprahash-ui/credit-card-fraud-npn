@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import time
@@ -16,15 +17,23 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from src.fraud_pipeline.deployment_artifacts import (
+    DeploymentArtifactContract,
+    R2ArtifactStore,
+)
 from src.fraud_pipeline.input_contract import RawInputContract
+from src.fraud_pipeline.model_adapters import load_model_adapter
 from src.fraud_pipeline.model_manager import ModelManager
 from src.fraud_pipeline.registry import ModelRegistry
 
 from .catalog import PROJECT_ROOT, VersionName, load_model_catalog
-from .demo_repository import DemoTransactionRepository
+from .demo_repository import (
+    DemoTransactionRepository,
+    SupabaseDemoTransactionRepository,
+)
 from .errors import ApiError
 from .logging_config import configure_logging
-from .r2 import R2Gateway
+from .r2 import R2Gateway, create_r2_client
 from .schemas import (
     AlertActionRequest,
     BatchPredictionResponse,
@@ -69,12 +78,38 @@ def create_app(
     raw_contract = RawInputContract.load(
         _resolve_project_path(active_settings.raw_input_schema_path)
     )
+    artifact_store: R2ArtifactStore | None = None
+    if active_settings.r2_configured:
+        contract = DeploymentArtifactContract.load(
+            _resolve_project_path(active_settings.deployment_artifact_contract_path),
+            PROJECT_ROOT,
+        )
+        assert active_settings.r2_bucket_name is not None
+        artifact_store = R2ArtifactStore(
+            client=create_r2_client(active_settings),
+            bucket=active_settings.r2_bucket_name,
+            contract=contract,
+        )
+
+    def model_loader(spec):
+        if artifact_store is not None:
+            artifact_store.ensure_model(spec)
+            return load_model_adapter(spec, verify_manifest=False)
+        return load_model_adapter(spec)
+
     model_manager = ModelManager(
-        registry, max_loaded_models=active_settings.model_cache_size
+        registry,
+        max_loaded_models=active_settings.model_cache_size,
+        loader=model_loader,
     )
     metrics = RuntimeMetrics()
     reference_provider = BehavioralReferenceProvider(
-        _resolve_project_path(active_settings.behavioral_reference_path)
+        _resolve_project_path(active_settings.behavioral_reference_path),
+        ensure_available=(
+            lambda: artifact_store.ensure_runtime("behavioral_reference.v2")
+            if artifact_store is not None
+            else None
+        ),
     )
     active_prediction_service = prediction_service or PredictionService(
         registry,
@@ -89,9 +124,7 @@ def create_app(
         max_rows=active_settings.batch_max_rows,
         chunk_size=active_settings.batch_chunk_size,
     )
-    active_demo_repository = demo_repository or DemoTransactionRepository(
-        _resolve_project_path(active_settings.demo_dataset_path), raw_contract
-    )
+    active_demo_repository = demo_repository
     supabase_rest_client: SupabaseRestClient | None = None
     active_stream_controller = stream_controller
     active_alert_repository = alert_repository
@@ -111,13 +144,19 @@ def create_app(
             )
         if active_alert_repository is None:
             active_alert_repository = repository
+        if active_demo_repository is None:
+            active_demo_repository = SupabaseDemoTransactionRepository(repository)
+    if active_demo_repository is None:
+        active_demo_repository = DemoTransactionRepository(
+            _resolve_project_path(active_settings.demo_dataset_path), raw_contract
+        )
     r2 = R2Gateway(active_settings)
     supabase = SupabaseGateway(active_settings)
 
     app = FastAPI(
         title="NPN Fraud Intelligence API",
-        version="0.4.0",
-        description="Verified V1/V2 inference and analyst-console API.",
+        version="0.5.0",
+        description="Cloud-ready verified V1/V2 fraud intelligence API.",
     )
     app.state.model_manager = model_manager
     app.state.metrics = metrics
@@ -207,6 +246,8 @@ def create_app(
             "model_artifacts_available": available_artifacts,
             "supabase_configured": active_settings.supabase_configured,
             "r2_configured": active_settings.r2_configured,
+            "artifact_source": "r2_lazy_cache" if artifact_store else "local",
+            "behavioral_reference_available": reference_provider.path.is_file(),
         }
 
     @app.get("/integrations")
@@ -261,7 +302,7 @@ def create_app(
         limit: int = Query(default=20, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
     ) -> dict[str, object]:
-        transactions = await run_in_threadpool(
+        transactions = await _repository_call(
             active_demo_repository.list, limit=limit, offset=offset
         )
         return {
@@ -275,9 +316,7 @@ def create_app(
     async def transaction(
         transaction_id: int = ApiPath(ge=1),
     ) -> dict[str, object]:
-        payload = await run_in_threadpool(
-            active_demo_repository.get, transaction_id
-        )
+        payload = await _repository_call(active_demo_repository.get, transaction_id)
         return {
             "transaction_id": transaction_id,
             "labels_hidden": True,
@@ -465,6 +504,12 @@ def create_app(
 
 def _resolve_project_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+async def _repository_call(method, *args, **kwargs):
+    if inspect.iscoroutinefunction(method):
+        return await method(*args, **kwargs)
+    return await run_in_threadpool(method, *args, **kwargs)
 
 
 def _validated_form_models(value: str, registry: ModelRegistry) -> list[str]:

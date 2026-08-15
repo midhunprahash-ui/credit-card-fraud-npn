@@ -5,19 +5,27 @@ from api.settings import Settings
 
 
 def test_health_reports_eight_registered_models_without_secrets() -> None:
-    client = TestClient(create_app(Settings()))
+    settings = Settings(
+        r2_endpoint_url=None,
+        r2_access_key_id=None,
+        r2_secret_access_key=None,
+        r2_bucket_name=None,
+    )
+    client = TestClient(create_app(settings))
 
     response = client.get("/health")
 
     assert response.status_code == 200
     body = response.json()
     assert 0 <= body.pop("model_artifacts_available") <= 8
+    assert isinstance(body.pop("behavioral_reference_available"), bool)
     assert body == {
         "status": "ok",
         "environment": "development",
         "models_registered": 8,
         "supabase_configured": False,
         "r2_configured": False,
+        "artifact_source": "local",
     }
 
 

@@ -1,0 +1,5 @@
+-r requirements-api.txt
+catboost==1.2.10
+lightgbm==4.7.0
+
+# Render installs torch==2.8.0 from the official CPU-only index in render.yaml.

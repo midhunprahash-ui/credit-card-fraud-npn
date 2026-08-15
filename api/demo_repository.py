@@ -11,6 +11,7 @@ import pandas as pd
 from src.fraud_pipeline.input_contract import RawInputContract
 
 from .errors import ApiError
+from .stream_repository import SupabaseStreamRepository
 
 
 class DemoTransactionRepository:
@@ -83,6 +84,91 @@ class DemoTransactionRepository:
                 "demo_dataset_unavailable",
                 "The local held-out demonstration dataset is not available",
             )
+
+
+class SupabaseDemoTransactionRepository:
+    """Read label-free demonstration payloads through server-only PostgREST."""
+
+    def __init__(self, repository: SupabaseStreamRepository) -> None:
+        self.repository = repository
+        self._dataset_id: str | None = None
+
+    async def list(self, *, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
+        dataset_id = await self._demo_dataset_id()
+        rows = await self.repository.client.request(
+            "GET",
+            "stream_transactions",
+            params={
+                "select": "transaction_id,transaction_dt,transaction_payload",
+                "dataset_id": f"eq.{dataset_id}",
+                "order": "sequence_number.asc",
+                "offset": str(offset),
+                "limit": str(limit),
+            },
+        )
+        output = []
+        for row in rows:
+            payload = dict(row["transaction_payload"])
+            payload.pop("isFraud", None)
+            identity = any(
+                value is not None
+                for key, value in payload.items()
+                if key.startswith("id_") or key in {"DeviceType", "DeviceInfo"}
+            )
+            output.append(
+                {
+                    "transaction_id": int(row["transaction_id"]),
+                    "transaction_dt": float(row["transaction_dt"]),
+                    "transaction_amount": payload.get("TransactionAmt"),
+                    "product_code": payload.get("ProductCD"),
+                    "has_identity": identity,
+                }
+            )
+        return output
+
+    async def get(self, transaction_id: int) -> dict[str, Any]:
+        dataset_id = await self._demo_dataset_id()
+        rows = await self.repository.client.request(
+            "GET",
+            "stream_transactions",
+            params={
+                "select": "transaction_payload",
+                "dataset_id": f"eq.{dataset_id}",
+                "transaction_id": f"eq.{transaction_id}",
+                "limit": "1",
+            },
+        )
+        if not rows:
+            raise ApiError(
+                404,
+                "transaction_not_found",
+                f"TransactionID {transaction_id} is not in the demonstration dataset",
+            )
+        payload = dict(rows[0]["transaction_payload"])
+        payload.pop("isFraud", None)
+        return payload
+
+    async def _demo_dataset_id(self) -> str:
+        if self._dataset_id is not None:
+            return self._dataset_id
+        rows = await self.repository.client.request(
+            "GET",
+            "stream_datasets",
+            params={
+                "select": "id",
+                "name": "eq.demo_chronological",
+                "status": "eq.ready",
+                "limit": "1",
+            },
+        )
+        if not rows:
+            raise ApiError(
+                503,
+                "demo_dataset_unavailable",
+                "The Supabase chronological demonstration dataset is not ready",
+            )
+        self._dataset_id = str(rows[0]["id"])
+        return self._dataset_id
 
 
 def _safe_scalar(value: Any) -> Any:

@@ -113,6 +113,10 @@ npx wrangler login
 npm run deploy
 ```
 
+The production Pages project is `npn-fraud-analyst`. The versioned Wrangler
+command marks `main` as production. GitHub integration can later be enabled in
+the Pages dashboard without changing this static build contract.
+
 The `public/_headers` file adds baseline browser security headers. Update its
 `connect-src` rule if the API later moves from `onrender.com` to a custom domain.
 
@@ -137,4 +141,5 @@ server credential belongs in the Cloudflare Pages environment.
 
 Run the complete local workflow in
 [MILESTONE_4_FRONTEND_GUIDE.md](MILESTONE_4_FRONTEND_GUIDE.md) before deploying.
-Cloud deployment and live endpoint verification remain Milestone 5.
+Milestone 5 implementation and verification are recorded in
+[MILESTONE_5_CLOUD_DEPLOYMENT.md](MILESTONE_5_CLOUD_DEPLOYMENT.md).

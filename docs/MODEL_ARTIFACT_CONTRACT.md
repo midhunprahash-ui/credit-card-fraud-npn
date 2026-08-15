@@ -65,6 +65,18 @@ After comparison, a registry points to one approved run per model:
 }
 ```
 
+Deployment objects use immutable version/model/run keys:
+
+```text
+models/v1/<model-key>/<run-id>/...
+models/v2/<model-key>/<run-id>/...
+models/runtime/v2/behavioral_reference.joblib
+```
+
+`config/deployment_artifacts.json` pins every remote manifest SHA-256 and the
+target-free V2 reference SHA-256. A private bucket alone is not treated as a
+trust boundary: downloaded bytes must match this Git-reviewed contract.
+
 The backend loads only requested approved models and will later keep them in a
 bounded least-recently-used cache. It never downloads or deserializes an
 artifact supplied by an application user. The manifest and registry threshold

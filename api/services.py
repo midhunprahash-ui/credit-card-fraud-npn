@@ -30,8 +30,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 class BehavioralReferenceProvider:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, ensure_available=None) -> None:
         self.path = path
+        self.ensure_available = ensure_available
         self._reference: dict[str, Any] | None = None
         self._lock = threading.Lock()
 
@@ -39,6 +40,8 @@ class BehavioralReferenceProvider:
         with self._lock:
             if self._reference is not None:
                 return self._reference
+            if not self.path.is_file() and self.ensure_available is not None:
+                self.ensure_available()
             if not self.path.is_file():
                 raise ApiError(
                     503,

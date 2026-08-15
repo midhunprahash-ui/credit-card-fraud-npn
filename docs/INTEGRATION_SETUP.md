@@ -24,6 +24,11 @@ The repository pins Supabase CLI `2.114.0` for commands documented here. The
 project configuration is in `supabase/config.toml`; database changes are in
 `supabase/migrations/`.
 
+The hosted project is `credit-card-fraud-npn` (`dsiqmudbeaarrnxuaujf`) in the
+Tokyo region. The repository is linked to it, and both committed migrations
+have been applied. Project references are identifiers, not credentials; no
+database password or API key is stored in Git.
+
 The first migration creates:
 
 - `stream_datasets` and FIFO-ordered `stream_transactions`;
@@ -35,6 +40,8 @@ The first migration creates:
 All tables have RLS enabled. `anon` and `authenticated` have no table grants.
 Render uses a server-only Supabase secret key. This is deliberate because the
 frontend communicates through FastAPI rather than the Supabase Data API.
+New `sb_secret_...` keys are sent in Supabase's `apikey` header and are never
+used as bearer tokens.
 
 To link and apply the migration after authenticating:
 

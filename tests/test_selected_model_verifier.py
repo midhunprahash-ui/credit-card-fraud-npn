@@ -15,14 +15,25 @@ def test_selected_catalog_contains_exactly_eight_canonical_models() -> None:
     specs = selected_model_specs(PROJECT_ROOT)
 
     assert [spec.model_name for spec in specs] == [
-        "Logistic Regression.V1",
+        "LogisticRegression.V1",
         "LightGBM.V1",
         "CatBoost.V1",
-        "Neural Network.V1",
-        "Logistic Regression.V2",
+        "NeuralNetwork.V1",
+        "LogisticRegression.V2",
         "LightGBM.V2",
         "CatBoost.V2",
-        "Neural Network.V2",
+        "NeuralNetwork.V2",
+    ]
+
+    assert [spec.identifier for spec in specs] == [
+        "logistic_regression.v1",
+        "lightgbm.v1",
+        "catboost.v1",
+        "neural_network.v1",
+        "logistic_regression.v2",
+        "lightgbm.v2",
+        "catboost.v2",
+        "neural_network.v2",
     ]
 
 
@@ -46,4 +57,3 @@ def test_selected_registry_run_ids_match_artifact_directories() -> None:
     for spec in selected_model_specs(PROJECT_ROOT):
         manifest = json.loads((spec.artifact_directory / "manifest.json").read_text())
         assert manifest["artifact_directory"] == spec.run_id
-

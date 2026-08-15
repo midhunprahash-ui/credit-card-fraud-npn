@@ -1,17 +1,17 @@
-# Model artifact and four-model inference contract
+# Model artifact and eight-pipeline inference contract
 
 The final application accepts one common raw transaction and sends it through
-four independently trained pipelines. The raw input is common; internal
-representations are model-specific.
+any selection of eight independently trained pipelines. The raw input is
+common; V1/V2 feature engineering and model preprocessing are versioned.
 
 ```text
 Common transaction
         ↓
-Schema normalization + shared row features
-        ├── Logistic pipeline → probability
-        ├── LightGBM preprocessor + model → probability
-        ├── CatBoost preprocessor + model → probability
-        └── Neural preprocessor + network → probability
+Schema normalization; remove isFraud
+        ├── V1 feature engineering
+        │     └── each V1 model's saved preprocessor + model + threshold
+        └── V2 chronological feature engineering
+              └── each V2 model's saved preprocessor + model + threshold
 ```
 
 ## Native formats
@@ -65,30 +65,40 @@ After comparison, a registry points to one approved run per model:
 }
 ```
 
-The backend loads all four at startup. It never downloads or deserializes an
-artifact supplied by an application user.
+The backend loads only requested approved models and will later keep them in a
+bounded least-recently-used cache. It never downloads or deserializes an
+artifact supplied by an application user. The manifest and registry threshold
+are checked before a bundle is used.
 
 The approved run IDs and measured results are frozen in
 [`../config/model_registry.json`](../config/model_registry.json). The human-readable
 selection rationale is in
 [`FINAL_MODEL_SELECTION.md`](FINAL_MODEL_SELECTION.md).
 
-## Common API output
+## Common adapter output
 
 Each wrapper returns:
 
 ```json
 {
-  "model": "catboost",
-  "fraud_probability": 0.91,
-  "prediction": 1,
-  "threshold": 0.75,
-  "risk_level": "HIGH",
+  "model_identifier": "catboost.v2",
+  "model_name": "CatBoost.V2",
+  "model_version": "V2",
+  "run_id": "20260815T121042Z",
+  "risk_score": 0.91,
+  "decision": true,
+  "threshold": 0.019238112237044917,
   "latency_ms": 14.2,
-  "model_version": "20260813T120000Z"
+  "champion": true,
+  "processing_status": "completed"
 }
 ```
 
-The API combines all four results but does not claim that their unvalidated
-average is a superior ensemble. A future ensemble must be fitted using
-validation predictions only.
+Scores are fraud-risk scores, not guaranteed calibrated probabilities. The API
+may summarize agreement across selected models, but does not call that summary
+an ensemble. A future ensemble must be fitted using validation predictions only.
+
+The raw boundary null-fills absent optional fields and rejects invalid IDs,
+negative amounts, duplicate identifiers, and unknown fields. It always drops
+`isFraud`. V2 additionally requires a target-free reference whose recorded
+history cutoff is strictly earlier than the transaction being scored.

@@ -253,7 +253,6 @@ def build_preparation() -> None:
         code(r'''
         import joblib
         from src.fraud_pipeline.behavioral import (
-            BehavioralFeatureContract,
             add_causal_behavioral_features,
             build_behavioral_reference,
         )
@@ -276,7 +275,15 @@ def build_preparation() -> None:
         leakage_sample = joined.nsmallest(
             min(20_000, len(joined)), ["TransactionDT", "TransactionID"]
         ).copy()
-        deployment_reference = build_behavioral_reference(joined)
+        # The replay reference may contain train and validation history, but it
+        # must end before the chronological held-out test partition begins.
+        ordered_raw = joined.sort_values(
+            ["TransactionDT", "TransactionID"], kind="stable"
+        ).reset_index(drop=True)
+        heldout_start = int(len(ordered_raw) * (0.70 + 0.15))
+        deployment_reference = build_behavioral_reference(
+            ordered_raw.iloc[:heldout_start]
+        )
         del joined
         gc.collect()
 
@@ -299,7 +306,7 @@ def build_preparation() -> None:
         build_feature_audit(train).to_csv(V2_DATA_DIR / "feature_audit.csv", index=False)
         write_json(V2_DATA_DIR / "split_metadata.json", split_metadata)
         write_json(V2_DATA_DIR / "raw_input_schema.json", raw_input_schema)
-        write_json(V2_DATA_DIR / "behavioral_contract.json", BehavioralFeatureContract().to_dict())
+        write_json(V2_DATA_DIR / "behavioral_contract.json", deployment_reference["contract"])
 
         joblib.dump(deployment_reference, V2_DATA_DIR / "behavioral_reference.joblib", compress=3)
         write_json(V2_DATA_DIR / "data_summary.json", {

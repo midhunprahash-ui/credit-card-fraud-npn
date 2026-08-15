@@ -26,10 +26,16 @@ def test_model_catalog_uses_canonical_v1_v2_names() -> None:
 
     assert response.status_code == 200
     assert [item["model_name"] for item in response.json()["models"]] == [
-        "Logistic Regression.V2",
+        "LogisticRegression.V2",
         "LightGBM.V2",
         "CatBoost.V2",
-        "Neural Network.V2",
+        "NeuralNetwork.V2",
+    ]
+    assert [item["model_identifier"] for item in response.json()["models"]] == [
+        "logistic_regression.v2",
+        "lightgbm.v2",
+        "catboost.v2",
+        "neural_network.v2",
     ]
 
 
@@ -39,4 +45,3 @@ def test_model_version_filter_rejects_unknown_versions() -> None:
     response = client.get("/models", params={"version": "V3"})
 
     assert response.status_code == 422
-

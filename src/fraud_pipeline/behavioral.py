@@ -226,8 +226,18 @@ def build_behavioral_reference(frame: pd.DataFrame) -> dict[str, Any]:
     history = add_v2_row_features(frame, copy=True).sort_values(
         [TIME_COLUMN, ID_COLUMN], kind="stable"
     )
+    if history.empty:
+        raise ValueError("Behavioral reference history cannot be empty")
+    last_history_row = history.iloc[-1]
+    contract = BehavioralFeatureContract(
+        metadata={
+            "history_end_transaction_dt": float(last_history_row[TIME_COLUMN]),
+            "history_end_transaction_id": int(last_history_row[ID_COLUMN]),
+            "history_row_count": int(len(history)),
+        }
+    ).to_dict()
     reference: dict[str, Any] = {
-        "contract": BehavioralFeatureContract().to_dict(),
+        "contract": contract,
         "counts": {},
         "last_time": {},
         "numeric": {},
@@ -246,7 +256,20 @@ def build_behavioral_reference(frame: pd.DataFrame) -> dict[str, Any]:
         if column in history
     )
     for key, value, prefix in numeric_pairs:
-        summary = history.groupby(key, observed=True)[value].agg(["count", "mean", "std"])
+        numeric = pd.to_numeric(history[value], errors="coerce")
+        summary = (
+            pd.DataFrame({"key": history[key], "value": numeric})
+            .groupby("key", observed=True)["value"]
+            .agg(
+                count="count",
+                mean="mean",
+                # Training's causal implementation uses E[x^2] - E[x]^2,
+                # which is population standard deviation (ddof=0).
+                std=lambda values: (
+                    values.std(ddof=0) if values.count() >= 2 else np.nan
+                ),
+            )
+        )
         reference["numeric"][prefix] = {
             "count": summary["count"].astype("int32").to_dict(),
             "mean": summary["mean"].astype("float32").to_dict(),

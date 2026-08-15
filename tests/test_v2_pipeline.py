@@ -81,6 +81,25 @@ def test_frozen_behavioral_reference_supports_new_rows() -> None:
     assert reference["contract"]["uses_target"] is False
 
 
+def test_frozen_reference_matches_causal_training_statistics() -> None:
+    raw = behavioral_frame()
+    reference = build_behavioral_reference(raw.iloc[:5])
+    frozen = apply_behavioral_reference(raw.iloc[[5]], reference, copy=True)
+    causal = add_causal_behavioral_features(raw, copy=True).iloc[[5]]
+
+    columns = [column for column in frozen if "_prior_" in column or "zscore" in column]
+    pd.testing.assert_frame_equal(
+        frozen[columns].reset_index(drop=True),
+        causal[columns].reset_index(drop=True),
+        check_dtype=False,
+        rtol=1e-5,
+        atol=1e-6,
+    )
+    metadata = reference["contract"]["metadata"]
+    assert metadata["history_end_transaction_id"] == 5
+    assert metadata["history_end_transaction_dt"] == 500.0
+
+
 def test_time_folds_and_class_weights() -> None:
     folds = expanding_time_folds(850)
     assert len(folds) == 3

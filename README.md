@@ -145,3 +145,7 @@ See [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md).
 The checked-in Supabase migration, Render Blueprint, Cloudflare Pages build
 settings, secret boundaries and local verification commands are explained in
 [docs/INTEGRATION_SETUP.md](docs/INTEGRATION_SETUP.md).
+
+Before adding prediction workflows to the React application, run the required
+eight-pipeline check in
+[docs/MODEL_VERIFICATION_GATE.md](docs/MODEL_VERIFICATION_GATE.md).

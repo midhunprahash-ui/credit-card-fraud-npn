@@ -935,7 +935,7 @@ tbody tr:hover {
 }
 .prediction-detail-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 0.8fr) minmax(420px, 1.2fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 0;
   background: var(--surface-2);
 }
@@ -943,6 +943,7 @@ tbody tr:hover {
   min-width: 0;
   padding: 18px;
   border-right: 1px solid var(--line);
+  overflow: hidden;
 }
 .prediction-detail-grid > section:last-child {
   border-right: 0;
@@ -957,6 +958,44 @@ tbody tr:hover {
 .input-values-scroll {
   background: var(--surface);
   border: 1px solid var(--line-soft);
+}
+.feature-driver-table,
+.input-values-table {
+  width: 100%;
+  table-layout: fixed;
+}
+.feature-name-column {
+  width: 43%;
+}
+.feature-direction-column {
+  width: 37%;
+}
+.feature-contribution-column {
+  width: 20%;
+}
+.feature-driver-table th,
+.feature-driver-table td,
+.input-values-table th,
+.input-values-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+.feature-driver-table .badge {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+}
+.feature-contribution {
+  text-align: right;
+  white-space: nowrap;
+}
+.input-name-column {
+  width: 58%;
+}
+.input-value-column {
+  width: 42%;
 }
 .input-values-scroll {
   max-height: 300px;
@@ -1755,6 +1794,7 @@ tbody tr:hover {
   .prediction-detail-grid > section {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+    overflow: visible;
   }
   .callout {
     align-items: flex-start;

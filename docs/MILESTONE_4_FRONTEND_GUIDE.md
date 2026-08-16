@@ -1,5 +1,10 @@
 # Milestone 4: Fraud Intelligence Console
 
+> Status: Historical record of the original six-page analyst console. The
+> current public product is the focused one-page CYPHER interface documented in
+> [SIMPLIFIED_APPLICATION_GUIDE.md](SIMPLIFIED_APPLICATION_GUIDE.md). Do not use
+> this file as the current UI runbook.
+
 ## Outcome
 
 The repository now contains a responsive React/TypeScript console for bank

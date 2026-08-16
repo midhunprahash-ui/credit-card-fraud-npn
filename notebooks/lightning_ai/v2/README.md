@@ -1,5 +1,9 @@
 # Version 2 training notebooks
 
+> Status: All four standalone V2 models are complete. The optional LightGBM +
+> CatBoost consensus was deferred and is not part of the eight-pipeline CYPHER
+> application.
+
 Version 2 is an additional experiment. It does not replace or modify the Version 1
 notebooks, processed data, or model runs.
 
@@ -9,7 +13,8 @@ notebooks, processed data, or model runs.
 2. One teammate runs `10_v2_behavioral_data_preparation.ipynb` once.
 3. Share `data/processed/v2/` privately with the other model owners, or let every owner run notebook 10.
 4. Each model team runs its assigned notebook from top to bottom.
-5. After LightGBM and CatBoost finish, place both complete run folders on one machine and run notebook 15.
+5. Do not run notebook 15 unless the team explicitly reopens the deferred
+   consensus experiment.
 
 | Notebook | Owners | Output folder |
 | --- | --- | --- |
@@ -17,7 +22,7 @@ notebooks, processed data, or model runs.
 | `12_v2_catboost_midhun_ajmeer.ipynb` | Midhun / Ajmeer | `artifacts/v2/catboost/<run-id>/` |
 | `13_v2_logistic_regression_nanda_khishan.ipynb` | Nanda / Khishan | `artifacts/v2/logistic_regression/<run-id>/` |
 | `14_v2_tabular_neural_network_mirdula_hashvitha.ipynb` | Mirdula / Hashvitha | `artifacts/v2/neural_network/<run-id>/` |
-| `15_v2_lightgbm_catboost_consensus.ipynb` | Tree-model teams | `artifacts/v2/consensus/<run-id>/` |
+| `15_v2_lightgbm_catboost_consensus.ipynb` | Deferred optional experiment | `artifacts/v2/consensus/<run-id>/` |
 
 Keep `FAST_RUN = False` for accepted results. Each model notebook automatically:
 

@@ -1,5 +1,10 @@
 # Four-Model Experiment Plan
 
+> Status: Original Version 1 experiment plan. Approved outcomes are frozen in
+> [FINAL_MODEL_SELECTION.md](FINAL_MODEL_SELECTION.md), and the current V1/V2
+> application contract is in
+> [MODEL_ARTIFACT_CONTRACT.md](MODEL_ARTIFACT_CONTRACT.md).
+
 This is the agreed machine-learning plan for the IEEE-CIS fraud-detection project. It describes exactly what each model receives, why it is included, how it is trained, and how the four results are compared in the deployed hackathon application.
 
 ## 1. Decision summary

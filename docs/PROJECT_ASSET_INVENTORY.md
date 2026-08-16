@@ -1,6 +1,6 @@
 # Project asset inventory
 
-Last audited: 15 August 2026 (Asia/Kolkata)
+Last audited: 16 August 2026 (Asia/Kolkata)
 
 This file explains where every important training and deployment asset is kept.
 Large datasets and trained models are intentionally ignored by Git. The source
@@ -10,6 +10,7 @@ notebooks, pipeline code, configuration and documentation remain versioned.
 
 ```text
 credit-card-fraud-npn/
+├── api/                             # FastAPI prediction, explanation and FIFO API
 ├── artifacts/
 │   ├── catboost/                   # Version 1 CatBoost runs
 │   ├── lightgbm/                   # Version 1 LightGBM runs
@@ -31,8 +32,11 @@ credit-card-fraud-npn/
 │   └── model_registry_v2.json      # Current Version 2 run status
 ├── data/
 │   ├── raw/                        # Kaggle files; not committed
-│   └── processed/                  # Re-creatable processed data; not committed
+│   ├── processed/                  # Re-creatable processed data; not committed
+│   └── samples/
+│       └── kaggle_inference_sample_100.csv # Safe 100-row, 433-column upload sample
 ├── docs/                           # Human-readable project documentation
+├── frontend/                       # React/Vite CYPHER application
 ├── notebooks/
 │   └── lightning_ai/
 │       ├── 00...04                 # Clean Version 1 training notebooks
@@ -91,3 +95,17 @@ Every currently saved completed run passed the manifest size and SHA-256 audit.
 
 This missing optional item does not affect the already completed V1 system or
 the four completed standalone V2 models.
+
+## Current deployment and demonstration assets
+
+- `data/samples/kaggle_inference_sample_100.csv` contains 100 real official
+  Kaggle test transactions, all 433 raw input columns, and no `isFraud` label.
+- `config/deployment_artifacts.json` pins the R2 object prefixes, manifests,
+  counts, sizes, and SHA-256 values used by the lazy model manager.
+- `config/model_catalog.json` contains safe display metrics that do not require
+  loading model binaries.
+- `frontend/dist/` is generated and not the source of truth. Cloudflare Pages
+  must be rebuilt from `frontend/src/` with the production `VITE_API_URL`.
+- Full labelled held-out data and all model binaries remain Git-ignored. The
+  600-row labelled replay is retained for controlled evaluation but is not
+  offered by the simplified public UI.

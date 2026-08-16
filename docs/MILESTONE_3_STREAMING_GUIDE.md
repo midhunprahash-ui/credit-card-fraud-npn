@@ -1,5 +1,10 @@
 # Milestone 3: Supabase-backed FIFO streaming
 
+> Status: Historical implementation record for the labelled replay. The
+> simplified public UI now offers only the 100-row unlabelled
+> `kaggle_inference_sample`; see
+> [KAGGLE_INFERENCE_SAMPLE.md](KAGGLE_INFERENCE_SAMPLE.md).
+
 ## Outcome
 
 The FastAPI backend can now replay real labelled held-out transactions in strict
@@ -8,9 +13,9 @@ revealed only on the completed demonstration event. Render publishes live state
 directly to the future React client through Server-Sent Events (SSE); Supabase
 stores durable run, prediction, alert, and analyst-workflow records.
 
-Cloudflare R2 artifact transfer and the final React console remain later
-milestones. The stream does not use random transactions or the unlabelled Kaggle
-competition test set.
+This milestone originally preceded Cloudflare R2 integration and the React
+console. Its labelled datasets and API contracts remain available for controlled
+evaluation, but they are hidden from the current simplified UI.
 
 ## Runtime flow
 
@@ -128,6 +133,11 @@ held-out partition derived from the training dataset. It is Git-ignored.
 The demo is not oversampled or reordered. Its small fraud-rate difference is a
 consequence of taking the first natural window, not changing class balance. At
 one TPS it runs for approximately ten minutes.
+
+These labelled datasets are not the current public replay selection. CYPHER
+uses 100 chronological official Kaggle test rows so its primary workflow
+predicts genuinely unknown labels. The FIFO producer, one-consumer ordering,
+pause/resume/stop controls, batch prefetch, and SSE transport are unchanged.
 
 Validate without cloud access:
 

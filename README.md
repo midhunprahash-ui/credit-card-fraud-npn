@@ -1,4 +1,4 @@
-# Credit Card Fraud Detection — NPN Hackathon
+# CYPHER — Credit Card Fraud Detection
 
 An end-to-end fraud-risk scoring application built with the IEEE-CIS Fraud Detection dataset. The project combines transaction information with device and identity signals, produces a fraud-risk score, and presents the result in an analyst-friendly dashboard.
 
@@ -12,7 +12,7 @@ Banks need to identify suspicious e-commerce payments quickly while avoiding unn
 | Target | `isFraud` (`1` fraudulent, `0` legitimate) |
 | Output | Fraud-risk score, model-specific decision, latency, and model explanation |
 | Models shown | Logistic Regression, LightGBM, CatBoost, and tabular neural network |
-| Deployment target | FastAPI multi-model API on Render and React analyst dashboard on Cloudflare |
+| Deployment target | FastAPI inference API on Render and React/Vite UI on Cloudflare Pages |
 
 ## Solution flow
 
@@ -29,7 +29,7 @@ Four class-weighted fraud classifiers
         ↓
 Eight approved V1/V2 model bundles and feature schemas
         ↓
-FastAPI eight-pipeline scoring service → React analyst dashboard → Cloud deployment
+FastAPI eight-pipeline scoring service → React CYPHER inference UI → Cloud deployment
 ```
 
 ## Repository structure
@@ -43,11 +43,11 @@ credit-card-fraud-npn/
 ├── notebooks/            # Exploration and experiments
 ├── src/                  # Reusable data, features, training, evaluation code
 ├── api/                  # FastAPI service
-├── frontend/             # React/Vite analyst dashboard for Cloudflare Pages
+├── frontend/             # React/Vite CYPHER inference UI for Cloudflare Pages
 ├── artifacts/            # Versioned model bundles; ignored by Git and uploaded to R2
 ├── tests/                # Automated checks
 ├── requirements-training.txt # Lightning AI training dependencies
-├── render.yaml           # Cloud deployment definition (when added)
+├── render.yaml           # Render web-service definition
 └── README.md             # This project entry point
 ```
 
@@ -67,19 +67,44 @@ sample_submission.csv     # Submission format example
 
 `train_transaction` and `train_identity` are joined using `TransactionID` with a **left join**. A left join retains every transaction, including those that do not have identity information.
 
+## Current application
+
+CYPHER is now a focused, one-page ML inference application. It supports:
+
+- V1, V2, or both feature-engineering versions;
+- any independently selected subset of the eight approved pipelines;
+- Single JSON, CSV Upload, and strict-FIFO Real-time input modes; and
+- one spreadsheet-style output table shared by all three modes.
+
+No model is selected by default. The user must deliberately select at least one
+pipeline. Each output row shows `Transaction ID`, `Model`, `Fraud`, `Not Fraud`,
+`Score`, and the saved model-specific `Threshold`. Fraud is highlighted red and
+Not Fraud green. Opening a row reveals the supplied non-null inputs and up to
+five on-demand local feature contributions.
+
+The primary Real-time dataset is `kaggle_inference_sample`: 100 real,
+chronologically ordered rows from the official unlabelled Kaggle test set. It
+contains all 433 raw model-input columns and no `isFraud` label. The historical
+600-row labelled replay remains available in storage and backend code but is
+not offered in the simplified UI.
+
 ## Model decision
 
 The project is a binary classifier. Instead of returning only fraud/not fraud,
 each selected model first produces a fraud-risk score. These scores are not
 described as calibrated probabilities unless calibration is verified.
 
-| Example score band | Risk level | Suggested action |
-| ---: | --- | --- |
-| ≥ 0.85 | High | Block or urgently investigate |
-| 0.60–0.85 | Medium | Send to manual review |
-| < 0.60 | Low | Approve and monitor |
+For each independently selected pipeline, the backend compares its fraud-risk
+score with the threshold saved during that model's validation run:
 
-Thresholds are configurable. They will be selected based on alert capacity and fraud loss, not assumed to be `0.50`.
+```text
+score >= saved threshold  → Fraud
+score <  saved threshold  → Not Fraud
+```
+
+The displayed threshold is not a global UI setting and is not assumed to be
+`0.50`. Scores are model outputs, not guaranteed calibrated probabilities, so
+scores from different pipelines should be compared with care.
 
 ## Evaluation approach
 
@@ -102,7 +127,10 @@ Data will be split chronologically using `TransactionDT`, not randomly, to preve
 6. Update the relevant document in `docs/` whenever you make a meaningful data, model, API, dashboard, or deployment decision.
 7. Run tests before committing changes and record experiment settings and metrics so results can be reproduced.
 
-See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for the detailed project plan and handover guide.
+Start with [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) to find
+the current operating guides, model references, and historical milestone
+records. See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for the detailed
+project plan and handover guide.
 
 For a simple explanation of every feature, preprocessing rule, high-cardinality handling method, and model-specific difference, see [docs/FEATURE_ENGINEERING_GUIDE.md](docs/FEATURE_ENGINEERING_GUIDE.md).
 
@@ -114,7 +142,10 @@ The interactive profiling HTML is kept as a local, Git-ignored generated artifac
 
 The project is being built against the hackathon expectations captured in [docs/HACKATHON_EVALUATION_CHECKLIST.md](docs/HACKATHON_EVALUATION_CHECKLIST.md). The fixed four-model machine-learning lifecycle is in [docs/FOUR_MODEL_EXPERIMENT_PLAN.md](docs/FOUR_MODEL_EXPERIMENT_PLAN.md). Model bundle formats and the common four-model inference contract are defined in [docs/MODEL_ARTIFACT_CONTRACT.md](docs/MODEL_ARTIFACT_CONTRACT.md).
 
-The finalized four-model results and champion rationale are in [docs/FINAL_MODEL_SELECTION.md](docs/FINAL_MODEL_SELECTION.md). Machine-readable approved run IDs are frozen in [config/model_registry.json](config/model_registry.json).
+The finalized V1/V2 results and champion rationale are in
+[docs/FINAL_MODEL_SELECTION.md](docs/FINAL_MODEL_SELECTION.md). Machine-readable
+approved run IDs are frozen in [config/model_registry.json](config/model_registry.json)
+and [config/model_registry_v2.json](config/model_registry_v2.json).
 
 ## Lightning AI training notebooks
 
@@ -139,8 +170,8 @@ Share [docs/TEAMMATE_TRAINING_GUIDE.md](docs/TEAMMATE_TRAINING_GUIDE.md) with mo
 
 - **Training:** Lightning AI.
 - **Model storage:** private Cloudflare R2 bucket.
-- **Backend:** FastAPI on Render; lazily loads requested approved models and scores one common input independently.
-- **Frontend:** React/Vite on Cloudflare Pages; compares selected V1/V2 outputs side by side.
+- **Backend:** FastAPI on Render; lazily loads requested approved models and scores one common input independently. Local FastAPI is the reliable full-inference development path when the free cloud instance cannot load a large model.
+- **Frontend:** React/Vite on Cloudflare Pages; displays the selected V1/V2 outputs as rows in one common result table.
 
 See [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md).
 

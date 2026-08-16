@@ -7,7 +7,9 @@ IEEE-CIS Kaggle competition test files. It is for production-style inference,
 TransactionID lookup, CSV testing, and FIFO replay.
 
 The sample is not an accuracy test. Kaggle does not provide `isFraud` for these
-transactions, so the application displays ground truth as **Not available**.
+transactions. The simplified application does not show a Ground Truth column;
+it shows only the model's Fraud or Not Fraud classification, risk score, and
+saved threshold.
 
 ## Preparation
 
@@ -50,8 +52,12 @@ Upload with server-side Supabase settings in the local environment:
 ## Application behavior
 
 - Single JSON mode loads a complete stored payload from a TransactionID.
-- Real-time mode identifies the dataset as unlabelled.
-- Predictions still include model score, threshold, decision, and latency.
+- CSV Upload accepts `data/samples/kaggle_inference_sample_100.csv` directly.
+- Real-time exposes this as the only selectable dataset and processes all 100
+  rows in strict chronological FIFO order.
+- Predictions include model, Fraud/Not Fraud decision, score, and threshold in
+  the common results table.
+- Opening a row shows its non-null inputs and on-demand local contributions.
 - Ground truth is never inferred from the model prediction.
 - The labelled `demo_chronological` dataset remains available separately for
-  evaluation demonstrations.
+  controlled evaluation, but is hidden from the simplified UI.

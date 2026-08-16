@@ -1,5 +1,9 @@
 # Milestone 1: trusted local inference foundation
 
+> Status: Historical milestone record. The eight-pipeline verification contract
+> remains active; current application behaviour is documented in
+> [SIMPLIFIED_APPLICATION_GUIDE.md](SIMPLIFIED_APPLICATION_GUIDE.md).
+
 ## Outcome
 
 Milestone 1 establishes one safe input boundary and eight independently loaded

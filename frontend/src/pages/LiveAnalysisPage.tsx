@@ -32,6 +32,16 @@ type Filters = {
 
 type InputMode = "json" | "csv" | "realtime";
 
+const STREAM_STATUS_EVENTS = new Set([
+  "stream_status",
+  "stream_started",
+  "stream_paused",
+  "stream_resumed",
+  "stream_stopping",
+  "stream_finished",
+  "stream_failed",
+]);
+
 export function LiveAnalysisPage({
   filters,
   onFiltersChange,
@@ -236,7 +246,10 @@ function RealtimeWorkspace({
       );
       setCompleted((items) => [event, ...items].slice(0, 250));
       if (event.stream) setStatus(event.stream);
-    } else if ("status" in message.data)
+    } else if (
+      STREAM_STATUS_EVENTS.has(message.type) &&
+      "status" in message.data
+    )
       setStatus(message.data as StreamStatus);
   }, []);
   useEffect(() => {

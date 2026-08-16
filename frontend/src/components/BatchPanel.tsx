@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { BatchResponse, ModelIdentifier } from "../api/types";
+import { modelName } from "../config/models";
 import { downloadText, formatNumber, recordsToCsv } from "../utils/format";
 import { Icon } from "./Icon";
+import { PredictionTable } from "./PredictionTable";
 import { EmptyState, ErrorState, Panel, StatCard, StatusBadge } from "./ui";
 
 export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<BatchResponse | null>(null);
+  const [reportModels, setReportModels] = useState<ModelIdentifier[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -33,6 +36,7 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
       const response = await api.predictBatch(file, models);
       setProgress(100);
       setReport(response);
+      setReportModels(models);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Batch processing failed",
@@ -46,6 +50,7 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
     if (!selected) return;
     setFile(selected);
     setReport(null);
+    setReportModels([]);
     setError(null);
   }
 
@@ -130,7 +135,11 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
                   onClick={() =>
                     downloadText(
                       "prediction_results.csv",
-                      recordsToCsv(report.results),
+                      recordsToCsv(
+                        report.results.map(
+                          ({ input_payload: _input, ...row }) => row,
+                        ),
+                      ),
                     )
                   }
                 >
@@ -155,7 +164,7 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
               </div>
             }
           >
-            <BatchResultsTable rows={report.results} />
+            <BatchResultsTable rows={report.results} models={reportModels} />
           </Panel>
           {report.invalid_row_report.length ? (
             <Panel title="Invalid-row report" eyebrow="Rows not scored">
@@ -198,39 +207,46 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
   );
 }
 
-function BatchResultsTable({ rows }: { rows: Array<Record<string, unknown>> }) {
+function BatchResultsTable({
+  rows,
+  models,
+}: {
+  rows: Array<Record<string, unknown>>;
+  models: ModelIdentifier[];
+}) {
   const [search, setSearch] = useState("");
-  const [sortColumn, setSortColumn] = useState("TransactionID");
-  const [descending, setDescending] = useState(false);
   const visible = rows
     .filter((row) => String(row.TransactionID ?? "").includes(search.trim()))
-    .sort((first, second) => {
-      const left = first[sortColumn];
-      const right = second[sortColumn];
-      const comparison =
-        typeof left === "number" && typeof right === "number"
-          ? left - right
-          : String(left ?? "").localeCompare(String(right ?? ""));
-      return descending ? -comparison : comparison;
-    })
     .slice(0, 100);
-  const columns = rows.length
-    ? Object.keys(rows[0]).filter(
-        (column) =>
-          column === "TransactionID" ||
-          column.endsWith("_score") ||
-          column.endsWith("_threshold") ||
-          column.endsWith("_decision") ||
-          ["fraud_vote_count", "processing_status"].includes(column),
+  const predictionRows = visible.flatMap((row) =>
+    models.flatMap((identifier) => {
+      const name = modelName(identifier);
+      const score = row[`${name}_score`];
+      const threshold = row[`${name}_threshold`];
+      const decision = row[`${name}_decision`];
+      if (
+        typeof score !== "number" ||
+        typeof threshold !== "number" ||
+        typeof decision !== "boolean"
       )
-    : [];
-  function sort(column: string) {
-    if (column === sortColumn) setDescending((value) => !value);
-    else {
-      setSortColumn(column);
-      setDescending(false);
-    }
-  }
+        return [];
+      return [
+        {
+          key: `${String(row.TransactionID)}-${identifier}`,
+          transactionId: Number(row.TransactionID),
+          modelIdentifier: identifier,
+          modelName: name,
+          score,
+          threshold,
+          decision,
+          input:
+            typeof row.input_payload === "object" && row.input_payload !== null
+              ? (row.input_payload as Record<string, unknown>)
+              : undefined,
+        },
+      ];
+    }),
+  );
   return (
     <>
       <label className="search-box">
@@ -242,50 +258,10 @@ function BatchResultsTable({ rows }: { rows: Array<Record<string, unknown>> }) {
           placeholder="Search transaction ID"
         />
       </label>
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column}>
-                  <button className="sort-button" onClick={() => sort(column)}>
-                    {column.replaceAll("_", " ")}{" "}
-                    {sortColumn === column ? (descending ? "↓" : "↑") : ""}
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row, index) => (
-              <tr key={String(row.TransactionID ?? index)}>
-                {columns.map((column) => (
-                  <td
-                    key={column}
-                    className={column.endsWith("_score") ? "mono" : ""}
-                  >
-                    {column.endsWith("_decision") &&
-                    typeof row[column] === "boolean"
-                      ? row[column]
-                        ? "Fraud"
-                        : "Legitimate"
-                      : typeof row[column] === "number"
-                        ? Number(row[column]).toFixed(
-                            column.endsWith("_score") ||
-                              column.endsWith("_threshold")
-                              ? 5
-                              : 0,
-                          )
-                        : String(row[column] ?? "—")}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PredictionTable rows={predictionRows} />
       <p className="table-note">
-        Showing {visible.length} of {rows.length} processed rows.
+        Showing {visible.length} transactions and {predictionRows.length} model
+        predictions.
       </p>
     </>
   );

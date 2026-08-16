@@ -18,7 +18,7 @@ import joblib
 import pandas as pd
 
 from src.fraud_pipeline.inference_engine import InferenceEngine, TransactionPrediction
-from src.fraud_pipeline.input_contract import RawInputContract
+from src.fraud_pipeline.input_contract import RawInputContract, prepare_model_input
 from src.fraud_pipeline.model_adapters import ModelPredictionError
 from src.fraud_pipeline.model_manager import ModelLoadError, ModelManager
 from src.fraud_pipeline.registry import ModelRegistry
@@ -180,6 +180,48 @@ class PredictionService:
         self.metrics.record_success(prediction, elapsed_ms)
         return _prediction_response(prediction)
 
+    def explain(
+        self,
+        transaction: dict[str, Any],
+        model_identifier: str,
+    ) -> dict[str, Any]:
+        """Create an on-demand, transaction-level feature sensitivity result."""
+        try:
+            spec = self.registry.get(model_identifier)
+            aligned = self.raw_contract.align(pd.DataFrame([transaction]))
+            transaction_id = int(aligned.iloc[0][self.raw_contract.identifier_column])
+            reference = self.reference_provider.get() if spec.version_name == "V2" else None
+            model_input = prepare_model_input(
+                aligned,
+                spec.version_name,
+                behavioral_reference=reference,
+            )
+            adapter = self.model_manager.get(spec)
+            important_features = adapter.explain_one(model_input)
+        except ApiError:
+            raise
+        except (ModelLoadError, ModelPredictionError) as error:
+            raise ApiError(
+                503,
+                "explanation_unavailable",
+                f"Selected model {model_identifier} could not explain the transaction",
+            ) from error
+        except (KeyError, ValueError) as error:
+            raise ApiError(422, "invalid_explanation_input", str(error)) from error
+        except Exception as error:
+            LOGGER.exception(
+                "explanation_failed", extra={"error_type": type(error).__name__}
+            )
+            raise ApiError(
+                500, "explanation_failed", "Local explanation processing failed"
+            ) from error
+        return {
+            "transaction_id": transaction_id,
+            "model_identifier": model_identifier,
+            "method": "local_feature_contribution",
+            "important_features": important_features,
+        }
+
 
 class BatchPredictionService:
     ALLOWED_CONTENT_TYPES = {
@@ -256,6 +298,7 @@ class BatchPredictionService:
                 payload = {
                     column: _json_scalar(value) for column, value in row.items()
                 }
+                payload.pop("isFraud", None)
                 try:
                     prediction = self.prediction_service.predict(
                         payload, model_identifiers
@@ -273,6 +316,7 @@ class BatchPredictionService:
                     )
                     continue
                 flat = _flatten_batch_prediction(prediction)
+                flat["input_payload"] = payload
                 results.append(flat)
                 for model in prediction["results"]:
                     fraud_counts[model["model_identifier"]] += int(model["decision"])
@@ -376,7 +420,12 @@ def build_batch_download(report: dict[str, Any]) -> bytes:
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "prediction_results.csv",
-            pd.DataFrame(report["results"]).to_csv(index=False),
+            pd.DataFrame(
+                [
+                    {key: value for key, value in row.items() if key != "input_payload"}
+                    for row in report["results"]
+                ]
+            ).to_csv(index=False),
         )
         archive.writestr(
             "invalid_rows.csv",

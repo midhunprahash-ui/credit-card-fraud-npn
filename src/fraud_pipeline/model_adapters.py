@@ -100,6 +100,52 @@ class ModelAdapter(ABC):
             for score in scores
         ]
 
+    def explain_one(
+        self, frame: pd.DataFrame, *, top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        """Measure local score sensitivity by hiding one present feature at a time.
+
+        This is deliberately computed on demand instead of during inference so
+        the FIFO stream is not slowed by explanation work.
+        """
+        aligned = self._align(frame)
+        if len(aligned) != 1:
+            raise ValueError("Local explanation requires exactly one transaction")
+        candidates = [
+            column
+            for column in aligned.columns
+            if not pd.isna(aligned.iloc[0][column])
+        ]
+        if not candidates:
+            return []
+        baseline = float(np.asarray(self._predict_scores(aligned)).reshape(-1)[0])
+        variants = pd.concat([aligned] * len(candidates), ignore_index=True)
+        for index, column in enumerate(candidates):
+            variants.at[index, column] = np.nan
+        hidden_scores = np.asarray(
+            self._predict_scores(variants), dtype=np.float64
+        ).reshape(-1)
+        if len(hidden_scores) != len(candidates) or not np.isfinite(
+            hidden_scores
+        ).all():
+            raise ValueError("Model returned invalid local-explanation scores")
+        contributions = baseline - hidden_scores
+        ranked = sorted(
+            zip(candidates, contributions, strict=True),
+            key=lambda item: abs(float(item[1])),
+            reverse=True,
+        )[:top_k]
+        return [
+            {
+                "feature": feature,
+                "contribution": float(contribution),
+                "direction": (
+                    "toward_fraud" if contribution >= 0 else "toward_not_fraud"
+                ),
+            }
+            for feature, contribution in ranked
+        ]
+
     def _align(self, frame: pd.DataFrame) -> pd.DataFrame:
         missing = sorted(set(self.feature_columns) - set(frame))
         if missing:
@@ -143,6 +189,16 @@ class LightGBMAdapter(ModelAdapter):
     def _predict_scores(self, frame: pd.DataFrame) -> np.ndarray:
         return self.model.predict(self.preprocessor.transform(frame))
 
+    def explain_one(
+        self, frame: pd.DataFrame, *, top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        aligned = self._align(frame)
+        transformed = self.preprocessor.transform(aligned)
+        contributions = np.asarray(
+            self.model.predict(transformed, pred_contrib=True), dtype=np.float64
+        )[0, :-1]
+        return _rank_contributions(list(transformed.columns), contributions, top_k)
+
 
 class CatBoostAdapter(ModelAdapter):
     def __init__(self, spec: ModelSpec) -> None:
@@ -162,6 +218,20 @@ class CatBoostAdapter(ModelAdapter):
         transformed = self.preprocessor.transform(frame)
         pool = Pool(transformed, cat_features=self.preprocessor.categorical_features)
         return self.model.predict_proba(pool)[:, 1]
+
+    def explain_one(
+        self, frame: pd.DataFrame, *, top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        from catboost import Pool
+
+        aligned = self._align(frame)
+        transformed = self.preprocessor.transform(aligned)
+        pool = Pool(transformed, cat_features=self.preprocessor.categorical_features)
+        contributions = np.asarray(
+            self.model.get_feature_importance(pool, type="ShapValues"),
+            dtype=np.float64,
+        )[0, :-1]
+        return _rank_contributions(list(transformed.columns), contributions, top_k)
 
 
 class NeuralNetworkAdapter(ModelAdapter):
@@ -234,3 +304,25 @@ def _verify_threshold(spec: ModelSpec) -> None:
     artifact_threshold = float(json.loads(path.read_text())["threshold"])
     if not np.isclose(artifact_threshold, spec.threshold, rtol=0, atol=1e-15):
         raise ValueError(f"Registry/artifact threshold mismatch for {spec.identifier}")
+
+
+def _rank_contributions(
+    features: list[str], contributions: np.ndarray, top_k: int
+) -> list[dict[str, Any]]:
+    if len(features) != len(contributions) or not np.isfinite(contributions).all():
+        raise ValueError("Model returned invalid local feature contributions")
+    ranked = sorted(
+        zip(features, contributions, strict=True),
+        key=lambda item: abs(float(item[1])),
+        reverse=True,
+    )[:top_k]
+    return [
+        {
+            "feature": feature,
+            "contribution": float(contribution),
+            "direction": (
+                "toward_fraud" if contribution >= 0 else "toward_not_fraud"
+            ),
+        }
+        for feature, contribution in ranked
+    ]

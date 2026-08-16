@@ -48,7 +48,10 @@ def test_supabase_demo_repository_never_returns_hidden_label() -> None:
             }
         ]
         assert payload == {"TransactionID": 10}
+        assert repository.dataset_name == "kaggle_inference_sample"
+        assert repository.labels_available is False
         dataset_calls = [call for call in client.calls if call[1] == "stream_datasets"]
         assert len(dataset_calls) == 1
+        assert dataset_calls[0][2]["params"]["name"] == "eq.kaggle_inference_sample"
 
     asyncio.run(scenario())

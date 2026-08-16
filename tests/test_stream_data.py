@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts import upload_stream_datasets
+from scripts import upload_kaggle_inference_sample, upload_stream_datasets
 
 
 FIXTURE = Path(__file__).parent / "fixtures/stream_sample.json"
@@ -78,3 +78,39 @@ def test_upload_preparation_rejects_non_chronological_source(
                 source, row_limit=2, batch_size=2
             )
         )
+
+
+def test_kaggle_sample_joins_identity_and_has_no_ground_truth(
+    tmp_path: Path, monkeypatch
+) -> None:
+    transactions = tmp_path / "test_transaction.csv"
+    identities = tmp_path / "test_identity.csv"
+    pd.DataFrame(
+        {
+            "TransactionID": [20, 21],
+            "TransactionDT": [2.0, 1.0],
+            "TransactionAmt": [50.0, 75.0],
+        }
+    ).to_csv(transactions, index=False)
+    pd.DataFrame(
+        {
+            "TransactionID": [20],
+            "id-01": [3.5],
+        }
+    ).to_csv(identities, index=False)
+    monkeypatch.setattr(
+        upload_kaggle_inference_sample,
+        "raw_columns",
+        lambda: ["TransactionID", "TransactionDT", "TransactionAmt", "id_01"],
+    )
+
+    rows = upload_kaggle_inference_sample.prepare_rows(
+        transactions, identities, row_limit=2
+    )
+
+    assert [row["transaction_id"] for row in rows] == [21, 20]
+    assert [row["sequence_number"] for row in rows] == [0, 1]
+    assert rows[1]["transaction_payload"]["id_01"] == 3.5
+    assert "id_01" not in rows[0]["transaction_payload"]
+    assert all("isFraud" not in row["transaction_payload"] for row in rows)
+    assert all("actual_label" not in row for row in rows)

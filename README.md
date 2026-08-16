@@ -159,6 +159,9 @@ contracts are documented in
 The strict FIFO held-out replay, Supabase schema, hidden-label boundary, SSE
 contract, reproducible dataset upload, and stream tests are documented in
 [docs/MILESTONE_3_STREAMING_GUIDE.md](docs/MILESTONE_3_STREAMING_GUIDE.md).
+The separate 100-row official Kaggle test sample and its explicit unlabelled
+inference behavior are documented in
+[docs/KAGGLE_INFERENCE_SAMPLE.md](docs/KAGGLE_INFERENCE_SAMPLE.md).
 The current one-page CYPHER application keeps Single JSON, CSV Upload, and
 strict FIFO Real-time prediction while removing analyst case-management
 complexity. Its workflow is documented in

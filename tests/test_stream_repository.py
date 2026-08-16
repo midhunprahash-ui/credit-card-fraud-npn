@@ -73,6 +73,7 @@ def test_prefetch_uses_ordered_batch_query_and_separate_ground_truth_lookup() ->
                         "transaction_id": 1007,
                         "transaction_dt": 20.0,
                         "transaction_payload": {"TransactionID": 1007, "TransactionDT": 20.0},
+                        "stream_datasets": {"labels_available": True},
                     }
                 ],
                 [{"stream_transaction_id": 11, "is_fraud": True}],
@@ -105,6 +106,7 @@ def test_prefetch_rejects_missing_ground_truth() -> None:
                         "transaction_id": 1001,
                         "transaction_dt": 1.0,
                         "transaction_payload": {"TransactionID": 1001},
+                        "stream_datasets": {"labels_available": True},
                     }
                 ],
                 [],
@@ -114,6 +116,32 @@ def test_prefetch_rejects_missing_ground_truth() -> None:
             await SupabaseStreamRepository(client).fetch_transaction_batch(
                 "dataset-1", after_sequence=-1
             )
+
+    asyncio.run(scenario())
+
+
+def test_prefetch_allows_an_unlabelled_inference_dataset() -> None:
+    async def scenario() -> None:
+        client = RecordingClient(
+            [
+                [
+                    {
+                        "id": 12,
+                        "dataset_id": "kaggle-sample",
+                        "sequence_number": 0,
+                        "transaction_id": 3663549,
+                        "transaction_dt": 18403224.0,
+                        "transaction_payload": {"TransactionID": 3663549},
+                        "stream_datasets": {"labels_available": False},
+                    }
+                ]
+            ]
+        )
+        rows = await SupabaseStreamRepository(client).fetch_transaction_batch(
+            "kaggle-sample", after_sequence=-1
+        )
+        assert rows[0].actual_label is None
+        assert [call[1] for call in client.calls] == ["stream_transactions"]
 
     asyncio.run(scenario())
 

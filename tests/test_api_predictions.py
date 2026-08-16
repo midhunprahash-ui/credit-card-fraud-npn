@@ -65,6 +65,10 @@ class FakePredictionService:
 
 
 class FakeDemoRepository:
+    dataset_name = "kaggle_inference_sample"
+    split = "kaggle_inference"
+    labels_available = False
+
     def list(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
         return [
             {
@@ -114,8 +118,11 @@ def test_demo_lookup_never_returns_label() -> None:
 
     assert listing.status_code == 200
     assert listing.json()["labels_hidden"] is True
+    assert listing.json()["labels_available"] is False
+    assert listing.json()["dataset"] == "kaggle_inference_sample"
     assert detail.status_code == 200
     assert detail.json()["labels_hidden"] is True
+    assert detail.json()["labels_available"] is False
     assert "isFraud" not in detail.json()["transaction_payload"]
 
 

@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { BatchResponse, ModelIdentifier } from "../api/types";
-import {
-  downloadText,
-  formatCurrency,
-  formatNumber,
-  recordsToCsv,
-} from "../utils/format";
+import { downloadText, formatNumber, recordsToCsv } from "../utils/format";
 import { Icon } from "./Icon";
 import { EmptyState, ErrorState, Panel, StatCard, StatusBadge } from "./ui";
 
@@ -104,7 +99,7 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
 
       {report ? (
         <>
-          <div className="stats-grid stats-six">
+          <div className="stats-grid batch-summary-grid">
             <StatCard
               label="Total rows"
               value={formatNumber(report.summary.total_rows)}
@@ -123,17 +118,6 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
               label="Failed rows"
               value={formatNumber(report.summary.failed_rows)}
               tone={report.summary.failed_rows ? "high" : "neutral"}
-            />
-            <StatCard
-              label="Full agreement"
-              value={formatNumber(report.summary.model_agreement_count)}
-            />
-            <StatCard
-              label="Suspicious value"
-              value={formatCurrency(
-                report.summary.suspicious_transaction_value,
-              )}
-              tone="high"
             />
           </div>
           <Panel
@@ -207,7 +191,7 @@ export function BatchPanel({ models }: { models: ModelIdentifier[] }) {
       ) : !processing && !error ? (
         <EmptyState
           title="No batch analysed yet"
-          detail="Upload a raw joined-transaction CSV to see model-specific counts, agreement, suspicious value, and row-level results."
+          detail="Upload a raw transaction CSV to receive model scores and Fraud or Legitimate classifications for each accepted row."
         />
       ) : null}
     </div>
@@ -235,6 +219,8 @@ function BatchResultsTable({ rows }: { rows: Array<Record<string, unknown>> }) {
         (column) =>
           column === "TransactionID" ||
           column.endsWith("_score") ||
+          column.endsWith("_threshold") ||
+          column.endsWith("_decision") ||
           ["fraud_vote_count", "processing_status"].includes(column),
       )
     : [];
@@ -278,11 +264,19 @@ function BatchResultsTable({ rows }: { rows: Array<Record<string, unknown>> }) {
                     key={column}
                     className={column.endsWith("_score") ? "mono" : ""}
                   >
-                    {typeof row[column] === "number"
-                      ? Number(row[column]).toFixed(
-                          column.endsWith("_score") ? 5 : 0,
-                        )
-                      : String(row[column] ?? "—")}
+                    {column.endsWith("_decision") &&
+                    typeof row[column] === "boolean"
+                      ? row[column]
+                        ? "Fraud"
+                        : "Legitimate"
+                      : typeof row[column] === "number"
+                        ? Number(row[column]).toFixed(
+                            column.endsWith("_score") ||
+                              column.endsWith("_threshold")
+                              ? 5
+                              : 0,
+                          )
+                        : String(row[column] ?? "—")}
                   </td>
                 ))}
               </tr>

@@ -159,9 +159,11 @@ contracts are documented in
 The strict FIFO held-out replay, Supabase schema, hidden-label boundary, SSE
 contract, reproducible dataset upload, and stream tests are documented in
 [docs/MILESTONE_3_STREAMING_GUIDE.md](docs/MILESTONE_3_STREAMING_GUIDE.md).
-The six-page Fraud Intelligence Console, shared filters, manual and batch
-workflows, alert investigation, model comparison, monitoring, and frontend test
-commands are documented in
+The current one-page CYPHER application keeps Single JSON, CSV Upload, and
+strict FIFO Real-time prediction while removing analyst case-management
+complexity. Its workflow is documented in
+[docs/SIMPLIFIED_APPLICATION_GUIDE.md](docs/SIMPLIFIED_APPLICATION_GUIDE.md).
+The original Milestone 4 implementation remains documented in
 [docs/MILESTONE_4_FRONTEND_GUIDE.md](docs/MILESTONE_4_FRONTEND_GUIDE.md).
 The private R2 layout, lazy verified model cache, Render runtime, Cloudflare
 Pages release, Supabase cloud dataset, and deployment checklist are documented

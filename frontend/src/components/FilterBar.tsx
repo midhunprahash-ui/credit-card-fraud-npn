@@ -5,21 +5,15 @@ import { StatusBadge } from "./ui";
 export function FilterBar({
   versions,
   models,
-  inputMode,
   locked,
-  inputModeLocked = false,
   onVersionsChange,
   onModelsChange,
-  onInputModeChange,
 }: {
   versions: VersionName[];
   models: ModelIdentifier[];
-  inputMode: "Manual" | "Real-time";
   locked: boolean;
-  inputModeLocked?: boolean;
   onVersionsChange: (versions: VersionName[]) => void;
   onModelsChange: (models: ModelIdentifier[]) => void;
-  onInputModeChange: (mode: "Manual" | "Real-time") => void;
 }) {
   const visibleModels = MODEL_OPTIONS.filter((model) =>
     versions.includes(model.version),
@@ -86,23 +80,6 @@ export function FilterBar({
               />
               {model.name}
             </label>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Input mode</legend>
-        <div className="segmented-control">
-          {(["Manual", "Real-time"] as const).map((mode) => (
-            <button
-              type="button"
-              key={mode}
-              disabled={locked || inputModeLocked}
-              aria-pressed={inputMode === mode}
-              className={inputMode === mode ? "active" : ""}
-              onClick={() => onInputModeChange(mode)}
-            >
-              {mode}
-            </button>
           ))}
         </div>
       </fieldset>

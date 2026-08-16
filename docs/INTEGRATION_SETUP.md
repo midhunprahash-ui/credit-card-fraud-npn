@@ -134,10 +134,11 @@ npm run build
 npm run dev
 ```
 
-The production build now contains the complete six-page analyst console. It
-uses only the public `VITE_API_URL`, talks to FastAPI for every operation, and
-receives active-stream updates directly from Render SSE. No Supabase or R2
-server credential belongs in the Cloudflare Pages environment.
+The production build now contains the focused CYPHER prediction interface with
+Single JSON, CSV Upload, and Real-time modes. It uses only the public
+`VITE_API_URL`, talks to FastAPI for every operation, and receives active-stream
+updates directly from Render SSE. No Supabase or R2 server credential belongs
+in the Cloudflare Pages environment.
 
 Run the complete local workflow in
 [MILESTONE_4_FRONTEND_GUIDE.md](MILESTONE_4_FRONTEND_GUIDE.md) before deploying.

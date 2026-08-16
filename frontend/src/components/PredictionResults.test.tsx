@@ -46,10 +46,12 @@ const prediction: PredictionResponse = {
 };
 
 describe("PredictionResults", () => {
-  it("labels model disagreement as a visual summary, not an ensemble", () => {
+  it("shows the classification returned by every selected model", () => {
     render(<PredictionResults prediction={prediction} />);
-    expect(screen.getByText("Model disagreement")).toBeInTheDocument();
-    expect(screen.getByText(/not a trained ensemble/i)).toBeInTheDocument();
+    expect(screen.getByText("Models differ")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 of 2 models predicted fraud/i),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Fraud-risk score")).toHaveLength(2);
     expect(screen.getByText("CatBoost.V2")).toBeInTheDocument();
   });

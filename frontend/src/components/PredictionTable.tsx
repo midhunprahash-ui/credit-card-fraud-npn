@@ -180,6 +180,11 @@ function PredictionDetail({ detail }: { detail: RowDetail | null }) {
         ) : null}
         {detail.features.length ? (
           <table className="feature-driver-table">
+            <colgroup>
+              <col className="feature-name-column" />
+              <col className="feature-direction-column" />
+              <col className="feature-contribution-column" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Feature</th>
@@ -202,7 +207,7 @@ function PredictionDetail({ detail }: { detail: RowDetail | null }) {
                         : "Toward not fraud"}
                     </StatusBadge>
                   </td>
-                  <td className="mono">
+                  <td className="mono feature-contribution">
                     {feature.contribution >= 0 ? "+" : ""}
                     {formatNumber(feature.contribution, 6)}
                   </td>
@@ -220,7 +225,11 @@ function PredictionDetail({ detail }: { detail: RowDetail | null }) {
       <section>
         <h4>Transaction inputs ({inputEntries.length})</h4>
         <div className="input-values-scroll">
-          <table>
+          <table className="input-values-table">
+            <colgroup>
+              <col className="input-name-column" />
+              <col className="input-value-column" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Input</th>

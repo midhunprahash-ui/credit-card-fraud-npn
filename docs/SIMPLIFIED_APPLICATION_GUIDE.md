@@ -68,9 +68,10 @@ Every selected model produces one independent row with:
 
 Opening a row shows only the non-null inputs supplied for that transaction and
 calculates up to five local feature contributions on demand through
-`POST /explain`. LightGBM and CatBoost use native per-row contribution support.
-Logistic Regression and Neural Network use leave-one-feature-out score
-sensitivity. Positive values move the score toward Fraud; negative values move
+`POST /explain`. LightGBM and CatBoost are labelled as using native SHAP feature
+contributions. Logistic Regression and Neural Network are labelled as using
+leave-one-feature-out score sensitivity (not SHAP). Positive values move the
+score toward Fraud; negative values move
 it toward Not Fraud. Explanations are not calculated during initial prediction,
 so they do not slow the FIFO stream. They describe model behaviour and must not
 be interpreted as causal reasons for fraud.

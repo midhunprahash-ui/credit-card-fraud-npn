@@ -11,6 +11,8 @@ vi.mock("../api/client", () => ({
       transaction_id: 3488959,
       model_identifier: "lightgbm.v1",
       method: "local_feature_contribution",
+      explanation_technique: "shap",
+      explanation_technique_label: "SHAP feature contributions",
       important_features: [
         {
           feature: "TransactionAmt",
@@ -102,5 +104,8 @@ describe("PredictionResults", () => {
     expect(screen.getByText("Transaction inputs (3)")).toBeVisible();
     expect(screen.getAllByText("TransactionAmt")).toHaveLength(2);
     expect(await screen.findByText("Toward fraud")).toBeVisible();
+    expect(
+      screen.getByText("Explanation method: SHAP feature contributions"),
+    ).toBeVisible();
   });
 });

@@ -32,6 +32,8 @@ class ExplanationResponse(BaseModel):
     transaction_id: int
     model_identifier: str
     method: str
+    explanation_technique: Literal["shap", "feature_ablation"]
+    explanation_technique_label: str
     important_features: list[dict[str, Any]]
 
 

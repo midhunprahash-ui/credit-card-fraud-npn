@@ -219,6 +219,16 @@ class PredictionService:
             "transaction_id": transaction_id,
             "model_identifier": model_identifier,
             "method": "local_feature_contribution",
+            "explanation_technique": (
+                "shap"
+                if spec.model_key in {"lightgbm", "catboost"}
+                else "feature_ablation"
+            ),
+            "explanation_technique_label": (
+                "SHAP feature contributions"
+                if spec.model_key in {"lightgbm", "catboost"}
+                else "Feature-removal score sensitivity (not SHAP)"
+            ),
             "important_features": important_features,
         }
 

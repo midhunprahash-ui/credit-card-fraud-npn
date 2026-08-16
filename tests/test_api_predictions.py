@@ -70,6 +70,8 @@ class FakePredictionService:
             "transaction_id": int(transaction["TransactionID"]),
             "model_identifier": model_identifier,
             "method": "local_feature_contribution",
+            "explanation_technique": "shap",
+            "explanation_technique_label": "SHAP feature contributions",
             "important_features": [
                 {
                     "feature": "TransactionAmt",
@@ -184,6 +186,10 @@ def test_local_explanation_is_returned_on_demand() -> None:
     )
 
     assert response.status_code == 200
+    assert response.json()["explanation_technique"] == "shap"
+    assert response.json()["explanation_technique_label"] == (
+        "SHAP feature contributions"
+    )
     assert response.json()["important_features"][0] == {
         "feature": "TransactionAmt",
         "contribution": 0.12,

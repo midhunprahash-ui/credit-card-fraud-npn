@@ -3,13 +3,14 @@
 ## Purpose
 
 CYPHER is a focused interface for running the saved fraud-classification
-models. The trained model makes the Fraud or Legitimate decision. The user does
+models. The trained model makes the Fraud or Not Fraud decision. The user does
 not confirm labels, escalate alerts, manage cases, or add analyst notes.
 
 ## One-page workflow
 
 1. Select V1, V2, or both.
-2. Select one or more matching model pipelines.
+2. Select one or more matching model pipelines. No model is selected by
+   default.
 3. Choose Single JSON, CSV Upload, or Real-time.
 4. Submit the input or start the replay.
 5. Read each model's classification, fraud-risk score, and saved threshold in
@@ -19,6 +20,16 @@ not confirm labels, escalate alerts, manage cases, or add analyst notes.
 
 Selecting several models produces independent classifications. The displayed
 fraud count is a simple comparison, not a trained ensemble.
+
+The decision rule is always model-specific:
+
+```text
+risk score >= saved threshold  → Fraud
+risk score <  saved threshold  → Not Fraud
+```
+
+The user cannot edit that threshold in the current UI. It was selected on the
+validation partition and stored with the approved model artifact.
 
 ## Inputs
 
@@ -55,12 +66,18 @@ Every selected model produces one independent row with:
 - Fraud-risk score
 - Saved model-specific threshold
 
-Opening a row loads the transaction inputs and calculates up to five local
-feature contributions on demand. LightGBM and CatBoost use their native local
-contribution support. Other adapters use leave-one-feature-out score
-sensitivity. Explanations are not calculated during initial prediction, so
-they do not slow the FIFO stream. They describe model behaviour and must not be
-interpreted as causal reasons for fraud.
+Opening a row shows only the non-null inputs supplied for that transaction and
+calculates up to five local feature contributions on demand through
+`POST /explain`. LightGBM and CatBoost use native per-row contribution support.
+Logistic Regression and Neural Network use leave-one-feature-out score
+sensitivity. Positive values move the score toward Fraud; negative values move
+it toward Not Fraud. Explanations are not calculated during initial prediction,
+so they do not slow the FIFO stream. They describe model behaviour and must not
+be interpreted as causal reasons for fraud.
+
+`isFraud` is removed before validation, feature engineering, prediction, and
+display. The unlabelled Kaggle sample therefore demonstrates the intended use:
+classifying transactions whose true outcome is unknown.
 
 ## Intentionally not shown
 

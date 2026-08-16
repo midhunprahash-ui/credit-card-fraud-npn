@@ -20,5 +20,5 @@ python -m pip install -r requirements-eda.txt
 python src/generate_ydata_profile.py
 ```
 
-See `docs/YDATA_PROFILING_GUIDE.md` for the memory rationale and the optional
-deeper sample-profile command.
+See [the YData profiling guide](../../docs/YDATA_PROFILING_GUIDE.md) for the
+memory rationale and the optional deeper sample-profile command.

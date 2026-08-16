@@ -4,7 +4,11 @@ This document explains the whole project in simple terms. Keep it updated as the
 
 ## 1. What we are building
 
-We are building a cloud-hosted application that helps fraud analysts prioritize suspicious online payment transactions. A user can score one transaction or upload a batch. The same input is sent through four independently trained models, and the system displays four probabilities, classifications, thresholds, and explanations side by side.
+We are building CYPHER, a focused ML inference application for classifying
+anonymized online payment transactions. A user deliberately selects one or more
+of the eight approved V1/V2 pipelines, then supplies one JSON transaction,
+uploads a CSV, or starts a chronological FIFO replay. The same raw input is
+processed independently by each selected pipeline.
 
 This is a demonstration system trained on anonymized historical data. The dashboard's live activity is simulated; it is not connected to a bank payment network.
 
@@ -21,22 +25,32 @@ The common identifier is `TransactionID`. In the deployed form, omitted optional
 
 ### Output
 
-The API returns a JSON response with all four fraud probabilities. Simplified example:
+The API returns one independent result per selected model. Simplified example:
 
 ```json
 {
-  "transaction_id": "demo-001",
-  "models": {
-    "logistic_regression": {"fraud_probability": 0.61, "prediction": 0},
-    "lightgbm": {"fraud_probability": 0.84, "prediction": 1},
-    "catboost": {"fraud_probability": 0.91, "prediction": 1},
-    "neural_network": {"fraud_probability": 0.78, "prediction": 1}
-  },
-  "agreement": "STRONG_FRAUD_AGREEMENT"
+  "transaction_id": 3488959,
+  "results": [
+    {
+      "model_identifier": "lightgbm.v2",
+      "model_name": "LightGBM.V2",
+      "risk_score": 0.84,
+      "threshold": 0.73,
+      "decision": true
+    }
+  ]
 }
 ```
 
-The React dashboard translates this into model cards and a prioritized analyst queue.
+The React UI translates every model result into a spreadsheet row with
+Transaction ID, Model, Fraud, Not Fraud, Score, and Threshold. The decision is
+`Fraud` when the score is greater than or equal to that model's saved threshold;
+otherwise it is `Not Fraud`. Scores are fraud-risk scores, not guaranteed
+calibrated probabilities.
+
+Clicking a row reveals the non-null transaction inputs and up to five local
+feature contributions. Those contributions explain the model's behavior for
+that row; they do not prove that a feature caused fraud.
 
 ## 3. Data pipeline
 
@@ -75,7 +89,13 @@ The detailed source-column reference generated from the supplied files is in [DA
 
 ### Classification technique
 
-We use **supervised binary classification**. We compare Logistic Regression, LightGBM, CatBoost, and an embedding-based tabular neural network. Gradient-boosted trees are the planned main deployment candidates because they are strong on wide tabular data, handle nonlinear relationships, and can work with missing values and categorical variables. The complete experiment design is in [FOUR_MODEL_EXPERIMENT_PLAN.md](FOUR_MODEL_EXPERIMENT_PLAN.md).
+We use **supervised binary classification**. We compare Logistic Regression,
+LightGBM, CatBoost, and an embedding-based tabular neural network. CatBoost.V2
+is the frozen overall champion, while Logistic Regression remains the
+interpretable baseline. Every pipeline stays independently selectable. The
+complete experiment design is in
+[FOUR_MODEL_EXPERIMENT_PLAN.md](FOUR_MODEL_EXPERIMENT_PLAN.md), and frozen
+results are in [FINAL_MODEL_SELECTION.md](FINAL_MODEL_SELECTION.md).
 
 ### Class imbalance
 
@@ -136,8 +156,10 @@ Responsibilities:
 - One focused prediction page with version-aware V1/V2 model filters.
 - Single JSON, batch CSV, and chronological Real-time input modes.
 - Direct Render SSE updates, FIFO backlog visibility, and stream controls.
-- Side-by-side Fraud or Legitimate classifications, fraud-risk scores, saved
-  thresholds, and latency.
+- One common spreadsheet output for Single JSON, CSV Upload, and Real-time.
+- Red Fraud and green Not Fraud decisions, fraud-risk scores, saved thresholds,
+  and click-to-open input and local-explanation details.
+- No preselected models; the user explicitly chooses each pipeline to run.
 - No analyst case decisions, escalation, notes, or alert-management workflow.
 
 ## 7. Cloud deployment plan
@@ -148,7 +170,10 @@ The finalized platform split is:
 - Private Cloudflare R2 stores approved versioned model bundles.
 - FastAPI runs as a Render web service and lazily loads requested V1/V2 models.
 - React/Vite is deployed to Cloudflare Pages.
-- GitHub `main` triggers finalized deployments.
+- Render deploys the backend from GitHub `main` according to `render.yaml`.
+- The existing Cloudflare Pages project is a Direct Upload project. It must be
+  built with the production `VITE_API_URL` and deployed explicitly with
+  Wrangler; a Git push alone does not update it.
 
 See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) and [MODEL_ARTIFACT_CONTRACT.md](MODEL_ARTIFACT_CONTRACT.md).
 
@@ -168,7 +193,7 @@ See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) and [MODEL_ARTIFACT
 | Baseline | A reproducible model has time-based ROC-AUC and PR-AUC metrics |
 | Improved model | Feature engineering and tuned model outperform baseline |
 | API | Local `/health` and `/predict` work against saved model |
-| Frontend | Analyst can score and compare all four model results locally |
+| Frontend | User can select any approved V1/V2 pipelines and compare their rows locally |
 | Deployment | Public cloud URLs work and deployment is documented |
 | Handover | README, setup guide, model metrics, and demo flow are current |
 
@@ -207,11 +232,12 @@ Do not force-push, rewrite shared history, commit generated data/models, or merg
 
 ## 11. Demo script
 
-1. Open CYPHER and select a version and trained model.
+1. Open CYPHER, select V1 and/or V2, then select one or more trained models.
 2. Paste one transaction JSON and run the prediction.
-3. Show the model classification, score, saved threshold, and latency.
-4. Upload a CSV and download the row-level prediction results.
-5. Start the chronological Real-time replay and show FIFO processing.
+3. Show the Fraud/Not Fraud row, fraud-risk score, and saved threshold.
+4. Open the row and show its supplied inputs and strongest local contributions.
+5. Upload the 100-row Kaggle sample CSV and download the row-level results.
+6. Start the 100-row unlabelled Real-time replay and show FIFO processing.
 
 ## 12. Change log
 
@@ -221,3 +247,4 @@ Do not force-push, rewrite shared history, commit generated data/models, or merg
 | 2026-08-13 | Two-branch Git workflow adopted | Codex / team |
 | 2026-08-16 | Six-page V1/V2 Fraud Intelligence Console implemented and tested | Codex / team |
 | 2026-08-16 | Public UI simplified to JSON, CSV, and Real-time ML classification | Codex / team |
+| 2026-08-16 | Unified result table, no default model selection, and on-demand local explanations added | Codex / team |

@@ -1,14 +1,17 @@
 # Milestone 2: FastAPI manual prediction and CSV batch API
 
+> Status: API foundation retained and extended. The current one-page product is
+> documented in [SIMPLIFIED_APPLICATION_GUIDE.md](SIMPLIFIED_APPLICATION_GUIDE.md).
+
 ## Outcome
 
 The backend now exposes the verified Milestone 1 inference contract through
 typed FastAPI endpoints. It supports real held-out demonstration lookup, JSON
 single prediction, one-row CSV prediction, and chunked CSV batch prediction.
 
-This document covers the Milestone 2 manual surface. Supabase FIFO streaming and
-SSE were added in Milestone 3 and are documented separately; R2 artifact
-transfer and the final React interface remain later milestones.
+This document covers the Milestone 2 manual surface plus the later on-demand
+explanation addition. Supabase FIFO streaming is documented in Milestone 3, and
+R2/Render/Pages integration is documented in Milestone 5.
 
 ## Local setup
 
@@ -54,6 +57,7 @@ Open `http://localhost:8000/docs` for the generated OpenAPI interface.
 | GET | `/demo-transactions` | Chronological held-out choices without labels |
 | GET | `/transactions/{transaction_id}` | Complete joined raw input without `isFraud` |
 | POST | `/predict` | Single JSON transaction through selected models |
+| POST | `/explain` | On-demand local explanation for one transaction/model pair |
 | POST | `/predict/file` | Exactly one raw CSV row through selected models |
 | POST | `/predict/batch` | Chunked raw CSV scoring and row-level validation |
 | GET | `/metrics/summary` | In-process counts, latency, errors, and model-cache state |
@@ -95,6 +99,22 @@ The response contains one independent result per selected model:
 Agreement is a visual comparison, not an ensemble. Scores are not described as
 calibrated probabilities.
 
+The current UI names the negative class **Not Fraud**. The API retains the
+machine-readable legacy `decision_label: "legitimate"` value for compatibility;
+clients should use the boolean `decision` as authoritative.
+
+## Local explanation request
+
+`POST /explain` accepts one model identifier and one raw transaction. It returns
+up to five features, their signed contribution or sensitivity, and a direction
+of `toward_fraud` or `toward_not_fraud`. LightGBM and CatBoost use native
+per-row contribution support. Logistic Regression and Neural Network use
+leave-one-feature-out score sensitivity. The result explains model behaviour,
+not causation.
+
+Explanations are intentionally requested only after the user opens a result
+row. They are not part of the normal `/predict`, batch, or FIFO hot path.
+
 ## CSV input
 
 `POST /predict/file` and `POST /predict/batch` use multipart form data:
@@ -121,6 +141,11 @@ LightGBM.V1_decision
 fraud_vote_count
 processing_status
 ```
+
+Each JSON result also contains `input_payload`, which lets the UI open a row and
+show the exact non-null input supplied for that transaction. This field is
+excluded from downloadable files to keep exports focused and avoid duplicating
+wide raw input data.
 
 With `response_format=zip`, the response downloads:
 

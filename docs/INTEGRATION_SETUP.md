@@ -34,8 +34,8 @@ The migrations create:
 - `stream_datasets` and FIFO-ordered `stream_transactions`;
 - `stream_ground_truth`, separate from model payloads;
 - `prediction_history` with exact `ModelName.VersionName` values;
-- `alerts`; and
-- `analyst_actions`.
+- historical alert and analyst-action tables retained by the backend; and
+- stream-run and FIFO lifecycle tables.
 
 Milestone 3 additionally creates `stream_runs`, FIFO lifecycle events,
 model-specific `prediction_events`, and one investigation-ready `fraud_alert`
@@ -45,9 +45,12 @@ preparation, queue, SSE, and persistence contracts.
 
 All tables have RLS enabled. `anon` and `authenticated` have no table grants.
 Render uses a server-only Supabase secret key. This is deliberate because the
-frontend communicates through FastAPI rather than the Supabase Data API.
-New `sb_secret_...` keys are sent in Supabase's `apikey` header and are never
-used as bearer tokens.
+frontend communicates through FastAPI rather than the Supabase Data API. The
+current application therefore does not need a browser publishable key. If a
+future browser feature uses Supabase directly, expose only an
+`sb_publishable_...` key and add a narrowly scoped RLS policy first. New
+`sb_secret_...` keys are sent in Supabase's `apikey` header and are never used
+as bearer tokens or placed in a `VITE_*` variable.
 
 To link and apply the migration after authenticating:
 
@@ -89,13 +92,25 @@ The `/integrations` endpoint performs a bounded, read-only `HeadBucket` request.
 This verifies the R2 endpoint, credentials and bucket scope without listing or
 downloading an object.
 
-The current free plan is suitable only for the integration shell. Model memory
-profiling must select a larger plan or a version-scoped loading strategy before
-the eight real artifacts are enabled.
+The current free plan is suitable for health checks and the integration shell,
+but not reliable full inference with the larger approved artifacts. The service
+loads models lazily and keeps at most two by default; that reduces memory but
+does not make a 471 MB CatBoost bundle fit safely in 512 MB RAM. Use local
+FastAPI for full inference until a host with enough memory is available.
+Render also spins down a free web service after 15 minutes without inbound
+traffic, so its next request can take about a minute to wake it. These limits
+make the free service a development/demo target, not an always-hot production
+backend.
 
 ## Cloudflare Pages
 
-The React/Vite project is in `frontend/`. For Git-based Pages deployment use:
+The React/Vite project is in `frontend/`. The existing `npn-fraud-analyst`
+Pages project uses Direct Upload, not Git integration. A push to GitHub does
+**not** update the website. Direct Upload projects cannot later be converted to
+Git integration; automatic deployment would require a new Pages project or a
+CI workflow that invokes Wrangler.
+
+The static build contract is:
 
 | Setting | Value |
 | --- | --- |
@@ -105,17 +120,24 @@ The React/Vite project is in `frontend/`. For Git-based Pages deployment use:
 | Build output directory | `dist` |
 | Environment variable | `VITE_API_URL=https://<render-service>.onrender.com` |
 
-Wrangler configuration is also versioned for command-line deployment:
+Deploy the tested production build explicitly. `VITE_API_URL` must be present
+when Vite builds because it is embedded into the static application:
 
 ```bash
 cd frontend
 npx wrangler login
-npm run deploy
+npm ci
+npm run format:check
+npm test
+npm run type-check
+VITE_API_URL=https://credit-card-fraud-npn.onrender.com npm run build
+npx wrangler pages deploy dist --project-name npn-fraud-analyst --branch main
+npx wrangler pages deployment list --project-name npn-fraud-analyst
 ```
 
-The production Pages project is `npn-fraud-analyst`. The versioned Wrangler
-command marks `main` as production. GitHub integration can later be enabled in
-the Pages dashboard without changing this static build contract.
+The production URL is `https://npn-fraud-analyst.pages.dev`. Do not publish a
+build made with the local fallback URL: it would make visitors' browsers call
+their own `localhost:8000`.
 
 The `public/_headers` file adds baseline browser security headers. Update its
 `connect-src` rule if the API later moves from `onrender.com` to a custom domain.
@@ -134,13 +156,24 @@ npm run build
 npm run dev
 ```
 
-The production build now contains the focused CYPHER prediction interface with
-Single JSON, CSV Upload, and Real-time modes. It uses only the public
-`VITE_API_URL`, talks to FastAPI for every operation, and receives active-stream
-updates directly from Render SSE. No Supabase or R2 server credential belongs
-in the Cloudflare Pages environment.
+The production build contains the focused CYPHER prediction interface with
+Single JSON, CSV Upload, and Real-time modes. No model is selected by default.
+All modes use the common spreadsheet result table and on-demand `/explain`
+details. It uses only the public `VITE_API_URL`, talks to FastAPI for every
+operation, and receives active-stream updates directly from Render SSE. No
+Supabase or R2 server credential belongs in the Cloudflare Pages environment.
 
-Run the complete local workflow in
-[MILESTONE_4_FRONTEND_GUIDE.md](MILESTONE_4_FRONTEND_GUIDE.md) before deploying.
+Run the current workflow in
+[SIMPLIFIED_APPLICATION_GUIDE.md](SIMPLIFIED_APPLICATION_GUIDE.md) before
+deploying. The original six-page UI is preserved as a historical record in
+[MILESTONE_4_FRONTEND_GUIDE.md](MILESTONE_4_FRONTEND_GUIDE.md).
 Milestone 5 implementation and verification are recorded in
 [MILESTONE_5_CLOUD_DEPLOYMENT.md](MILESTONE_5_CLOUD_DEPLOYMENT.md).
+
+## Official platform references
+
+- [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys)
+- [Render free-service limits](https://render.com/docs/free)
+- [Render Blueprint reference](https://render.com/docs/blueprint-spec)
+- [Cloudflare Pages Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/)
+- [Cloudflare Wrangler Pages commands](https://developers.cloudflare.com/workers/wrangler/commands/pages/)

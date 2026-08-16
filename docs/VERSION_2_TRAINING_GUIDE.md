@@ -6,10 +6,12 @@ Version 1 remains the fixed baseline. Version 2 tests whether stronger behaviora
 features and more reliable time validation improve fraud ranking. All new files use a
 `v2` folder or a `v2` filename, so previous notebooks and model outputs remain usable.
 
-The main success metric is **test PR-AUC**, because fraud is rare. ROC-AUC is reported
-for Kaggle comparison, while precision, recall, F1, Brier score, and top-alert metrics
-show operational behavior. The Version 2 model is accepted only if it improves the
-held-out result or offers a clear operational advantage; it is not accepted merely
+The primary model-selection metric is **validation PR-AUC**, because fraud is
+rare. The chronological test partition is used once for final reporting and
+must not drive further model selection. ROC-AUC is reported for Kaggle
+comparison, while precision, recall, F1, Brier score, and top-alert metrics show
+operational behavior. A Version 2 model is accepted only if its validation
+result or operational trade-off justifies it; it is not accepted merely
 because it is newer.
 
 ## What changed and why

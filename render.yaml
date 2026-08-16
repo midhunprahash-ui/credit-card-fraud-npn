@@ -21,6 +21,16 @@ services:
         sync: false
       - key: MODEL_CACHE_SIZE
         value: "2"
+      - key: MODEL_CPU_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: VECLIB_MAXIMUM_THREADS
+        value: "1"
       - key: DEPLOYMENT_ARTIFACT_CONTRACT_PATH
         value: config/deployment_artifacts.json
       - key: SUPABASE_URL

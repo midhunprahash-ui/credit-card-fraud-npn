@@ -51,6 +51,10 @@ class ModelManager:
         self._cache: OrderedDict[str, ModelAdapter] = OrderedDict()
         self._states = {spec.identifier: ModelLoadState(spec.identifier) for spec in registry}
         self._lock = threading.RLock()
+        # Native model initialization is serialized to avoid overlapping memory
+        # spikes. It deliberately does not hold the state/cache lock, so health
+        # and model-status requests remain responsive during a slow load.
+        self._load_lock = threading.Lock()
 
     def get(self, spec: ModelSpec) -> ModelAdapter:
         with self._lock:
@@ -58,36 +62,51 @@ class ModelManager:
             if cached is not None:
                 self._cache[spec.identifier] = cached
                 return cached
-            state = self._states[spec.identifier]
-            state.status = "loading"
-            state.error = None
+
+        with self._load_lock:
+            # Another request may have populated the cache while this request
+            # waited for the single model-loading slot.
+            with self._lock:
+                cached = self._cache.pop(spec.identifier, None)
+                if cached is not None:
+                    self._cache[spec.identifier] = cached
+                    return cached
+                state = self._states[spec.identifier]
+                state.status = "loading"
+                state.error = None
+
             started = time.perf_counter()
             process = psutil.Process()
             memory_before = process.memory_info().rss
             try:
                 adapter = self.loader(spec)
             except Exception as error:
-                state.status = "failed"
-                state.load_time_ms = (time.perf_counter() - started) * 1_000
-                state.error = type(error).__name__
+                with self._lock:
+                    state.status = "failed"
+                    state.load_time_ms = (time.perf_counter() - started) * 1_000
+                    state.error = type(error).__name__
                 raise ModelLoadError(spec.identifier, type(error).__name__) from error
-            state.status = "loaded"
-            state.load_time_ms = (time.perf_counter() - started) * 1_000
+
             memory_after = process.memory_info().rss
-            state.memory_delta_bytes = max(0, memory_after - memory_before)
-            state.process_rss_after_load_bytes = memory_after
-            state.artifact_bytes = sum(
+            artifact_bytes = sum(
                 path.stat().st_size
                 for path in spec.artifact_directory.rglob("*")
                 if path.is_file()
             )
-            self._cache[spec.identifier] = adapter
-            evicted = False
-            while len(self._cache) > self.max_loaded_models:
-                identifier, _ = self._cache.popitem(last=False)
-                self._states[identifier].status = "not_loaded"
-                evicted = True
-            if evicted:
+            evicted_adapters: list[ModelAdapter] = []
+            with self._lock:
+                state.status = "loaded"
+                state.load_time_ms = (time.perf_counter() - started) * 1_000
+                state.memory_delta_bytes = max(0, memory_after - memory_before)
+                state.process_rss_after_load_bytes = memory_after
+                state.artifact_bytes = artifact_bytes
+                self._cache[spec.identifier] = adapter
+                while len(self._cache) > self.max_loaded_models:
+                    identifier, evicted_adapter = self._cache.popitem(last=False)
+                    self._states[identifier].status = "not_loaded"
+                    evicted_adapters.append(evicted_adapter)
+            if evicted_adapters:
+                evicted_adapters.clear()
                 gc.collect()
             return adapter
 

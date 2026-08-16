@@ -79,6 +79,13 @@ Render starts without model binaries in its Git checkout. On first selection:
 5. load the matching adapter; and
 6. retain it in the bounded LRU memory cache.
 
+Native model initialization is serialized without holding the cache/status
+lock. `/models` and monitoring requests therefore remain responsive while a
+model is loading. `MODEL_CPU_THREADS=1` bounds PyTorch checkpoint loading, and
+the Blueprint sets OpenMP, MKL, OpenBLAS and Accelerate/vecLib thread counts to
+one before native libraries initialize. This avoids the CPU OpenMP stall
+observed when neural and tree runtimes shared a development reload process.
+
 The V2 behavioral reference follows the same lazy checksum boundary. Render's
 filesystem is ephemeral, so downloads repeat after redeploy, restart, or free
 instance spin-down. R2 remains the durable source.
@@ -102,11 +109,15 @@ https://credit-card-fraud-npn.onrender.com
 
 ### Memory boundary
 
-The configured free Render instance has been unable to serve the larger models
-reliably. CatBoost.V2 alone is a 471 MB file and requires additional memory after
-deserialization. Do not claim that pipeline is cloud-verified on the free plan.
-Keep lazy loading enabled and move to a host with measured sufficient memory
-only after budget approval. No paid upgrade is performed automatically.
+The configured free Render instance has been unable to serve the V2 models
+reliably. Even bounded single-thread NeuralNetwork.V2 inference measured about
+573 MB peak locally when combined with its behavioral reference, above Render
+Free's 512 MB boundary. LightGBM.V2 and CatBoost.V2 require still more memory;
+CatBoost.V2 alone is a 471 MB model file before deserialization. Thread bounding
+improves stability but does not create additional RAM. Do not claim those
+pipelines are cloud-verified on the free plan. Keep lazy loading enabled and
+move to a host with measured sufficient memory only after budget approval. No
+paid upgrade is performed automatically.
 
 ## Cloudflare Pages
 

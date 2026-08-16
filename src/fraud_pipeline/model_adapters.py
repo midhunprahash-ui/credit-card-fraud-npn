@@ -235,13 +235,19 @@ class CatBoostAdapter(ModelAdapter):
 
 
 class NeuralNetworkAdapter(ModelAdapter):
-    def __init__(self, spec: ModelSpec) -> None:
+    def __init__(self, spec: ModelSpec, *, cpu_threads: int = 1) -> None:
         import joblib
         import torch
 
         from .neural import network_from_config
         from .neural_v2 import network_v2_from_config
 
+        if cpu_threads < 1:
+            raise ValueError("cpu_threads must be at least one")
+        # Bound PyTorch's process-wide CPU pool before checkpoint tensors are
+        # copied. This prevents OpenMP oversubscription/stalls when tree-model
+        # native runtimes have already initialized worker pools in this process.
+        torch.set_num_threads(cpu_threads)
         super().__init__(spec)
         self.preprocessor = joblib.load(
             spec.artifact_directory / spec.files["preprocessor_file"]
@@ -267,7 +273,12 @@ class NeuralNetworkAdapter(ModelAdapter):
         return scores.detach().cpu().numpy()
 
 
-def load_model_adapter(spec: ModelSpec, *, verify_manifest: bool = True) -> ModelAdapter:
+def load_model_adapter(
+    spec: ModelSpec,
+    *,
+    verify_manifest: bool = True,
+    model_cpu_threads: int = 1,
+) -> ModelAdapter:
     """Verify and load exactly one selected model bundle."""
     if verify_manifest:
         verify_artifact_manifest(spec.artifact_directory)
@@ -278,6 +289,8 @@ def load_model_adapter(spec: ModelSpec, *, verify_manifest: bool = True) -> Mode
         "catboost": CatBoostAdapter,
         "neural_network": NeuralNetworkAdapter,
     }
+    if spec.model_key == "neural_network":
+        return NeuralNetworkAdapter(spec, cpu_threads=model_cpu_threads)
     return adapters[spec.model_key](spec)
 
 

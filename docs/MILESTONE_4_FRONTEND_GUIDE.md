@@ -147,13 +147,19 @@ card, email, address, device, and identity values.
 Run the API and frontend in separate terminals:
 
 ```bash
-PYTHONPATH=. .venv/bin/uvicorn api.main:app --reload --port 8000
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VECLIB_MAXIMUM_THREADS=1 PYTHONPATH=. \
+  .venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
 
 cd frontend
 cp .env.example .env.local
 npm ci
 npm run dev
 ```
+
+Run the model-serving API without `--reload`. Hot reload is convenient for
+ordinary API editing but is unsafe after several native ML runtimes have created
+process-wide thread pools. Restart FastAPI explicitly after backend changes.
 
 Run the Milestone 4 acceptance checks:
 

@@ -290,6 +290,7 @@ BEHAVIORAL_REFERENCE_PATH=data/processed/v2/behavioral_reference.joblib
 DEPLOYMENT_ARTIFACT_CONTRACT_PATH=config/deployment_artifacts.json
 
 MODEL_CACHE_SIZE=2
+MODEL_CPU_THREADS=1
 BATCH_MAX_FILE_BYTES=5000000
 BATCH_MAX_ROWS=1000
 BATCH_CHUNK_SIZE=100
@@ -360,11 +361,16 @@ Never bypass this validation.
 Terminal 1, from the repository root:
 
 ```bash
-PYTHONPATH=. .venv/bin/uvicorn api.main:app \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VECLIB_MAXIMUM_THREADS=1 PYTHONPATH=. \
+  .venv/bin/uvicorn api.main:app \
   --host 0.0.0.0 \
-  --port 8000 \
-  --reload
+  --port 8000
 ```
+
+Do not add `--reload` while running the approved model artifacts. Explicitly
+restart the API after backend edits so PyTorch and tree-model native thread
+pools are initialized in a clean process.
 
 Verify:
 
@@ -484,6 +490,11 @@ ENVIRONMENT=production
 LOG_LEVEL=INFO
 CORS_ORIGINS=https://npn-fraud-analyst.pages.dev
 MODEL_CACHE_SIZE=2
+MODEL_CPU_THREADS=1
+OMP_NUM_THREADS=1
+MKL_NUM_THREADS=1
+OPENBLAS_NUM_THREADS=1
+VECLIB_MAXIMUM_THREADS=1
 DEPLOYMENT_ARTIFACT_CONTRACT_PATH=config/deployment_artifacts.json
 
 SUPABASE_URL=https://dsiqmudbeaarrnxuaujf.supabase.co

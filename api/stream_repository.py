@@ -24,7 +24,7 @@ class StoredStreamTransaction:
     transaction_id: int
     transaction_dt: float
     transaction_payload: dict[str, Any]
-    actual_label: bool
+    actual_label: bool | None
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ class CompletedStreamRecord:
     processing_started_at: datetime
     completed_at: datetime
     status: str
-    actual_label: bool
+    actual_label: bool | None
     suspicious_amount: float | None
     predictions: tuple[PersistedModelPrediction, ...]
     error_code: str | None = None
@@ -115,7 +115,7 @@ class SupabaseStreamRepository:
             "GET",
             "stream_datasets",
             params={
-                "select": "id,name,split,schema_version,row_count,fraud_count,fraud_rate,description,status",
+                "select": "id,name,split,schema_version,row_count,fraud_count,fraud_rate,labels_available,description,status",
                 "status": "eq.ready",
                 "order": "name.asc",
             },
@@ -134,7 +134,10 @@ class SupabaseStreamRepository:
             "GET",
             "stream_transactions",
             params={
-                "select": "id,dataset_id,sequence_number,transaction_id,transaction_dt,transaction_payload",
+                "select": (
+                    "id,dataset_id,sequence_number,transaction_id,transaction_dt,"
+                    "transaction_payload,stream_datasets!inner(labels_available)"
+                ),
                 "dataset_id": f"eq.{dataset_id}",
                 "sequence_number": f"gt.{after_sequence}",
                 "order": "sequence_number.asc",
@@ -143,20 +146,30 @@ class SupabaseStreamRepository:
         )
         if not rows:
             return []
+        label_flags = {
+            bool(row["stream_datasets"]["labels_available"]) for row in rows
+        }
+        if len(label_flags) != 1:
+            raise SupabaseRepositoryError("A transaction batch has inconsistent label metadata")
+        labels_available = label_flags.pop()
         ids = [int(row["id"]) for row in rows]
-        labels = await self.client.request(
-            "GET",
-            "stream_ground_truth",
-            params={
-                "select": "stream_transaction_id,is_fraud",
-                "stream_transaction_id": f"in.({','.join(str(value) for value in ids)})",
-            },
+        labels = (
+            await self.client.request(
+                "GET",
+                "stream_ground_truth",
+                params={
+                    "select": "stream_transaction_id,is_fraud",
+                    "stream_transaction_id": f"in.({','.join(str(value) for value in ids)})",
+                },
+            )
+            if labels_available
+            else []
         )
         label_by_id = {
             int(row["stream_transaction_id"]): bool(row["is_fraud"])
             for row in labels
         }
-        if set(label_by_id) != set(ids):
+        if labels_available and set(label_by_id) != set(ids):
             raise SupabaseRepositoryError("A prefetched transaction is missing ground truth")
         transactions = [
             StoredStreamTransaction(
@@ -166,7 +179,7 @@ class SupabaseStreamRepository:
                 transaction_id=int(row["transaction_id"]),
                 transaction_dt=float(row["transaction_dt"]),
                 transaction_payload=dict(row["transaction_payload"]),
-                actual_label=label_by_id[int(row["id"])],
+                actual_label=label_by_id.get(int(row["id"])),
             )
             for row in rows
         ]

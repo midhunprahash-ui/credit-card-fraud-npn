@@ -15,6 +15,10 @@ from .stream_repository import SupabaseStreamRepository
 
 
 class DemoTransactionRepository:
+    dataset_name = "held_out_full"
+    split = "chronological_test"
+    labels_available = True
+
     def __init__(self, dataset_path: Path, contract: RawInputContract) -> None:
         self.dataset_path = dataset_path
         self.contract = contract
@@ -89,8 +93,16 @@ class DemoTransactionRepository:
 class SupabaseDemoTransactionRepository:
     """Read label-free demonstration payloads through server-only PostgREST."""
 
-    def __init__(self, repository: SupabaseStreamRepository) -> None:
+    def __init__(
+        self,
+        repository: SupabaseStreamRepository,
+        *,
+        dataset_name: str = "kaggle_inference_sample",
+    ) -> None:
         self.repository = repository
+        self.dataset_name = dataset_name
+        self.split = "kaggle_inference"
+        self.labels_available = False
         self._dataset_id: str | None = None
 
     async def list(self, *, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
@@ -156,7 +168,7 @@ class SupabaseDemoTransactionRepository:
             "stream_datasets",
             params={
                 "select": "id",
-                "name": "eq.demo_chronological",
+                "name": f"eq.{self.dataset_name}",
                 "status": "eq.ready",
                 "limit": "1",
             },
@@ -165,7 +177,7 @@ class SupabaseDemoTransactionRepository:
             raise ApiError(
                 503,
                 "demo_dataset_unavailable",
-                "The Supabase chronological demonstration dataset is not ready",
+                f"The Supabase dataset {self.dataset_name} is not ready",
             )
         self._dataset_id = str(rows[0]["id"])
         return self._dataset_id

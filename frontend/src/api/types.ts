@@ -112,6 +112,7 @@ export type StreamDataset = {
   row_count: number;
   fraud_count: number | null;
   fraud_rate: number | null;
+  labels_available: boolean;
   description: string | null;
   status: string;
 };
@@ -156,7 +157,7 @@ export type CompletedStreamEvent = {
   processing_started_at: string;
   completed_at: string;
   status: string;
-  actual_label: boolean;
+  actual_label: boolean | null;
   results: ModelPrediction[];
   agreement: Agreement | null;
   latency_ms: number;

@@ -306,8 +306,11 @@ def create_app(
             active_demo_repository.list, limit=limit, offset=offset
         )
         return {
-            "dataset": "held_out_full",
-            "split": "chronological_test",
+            "dataset": getattr(active_demo_repository, "dataset_name", "held_out_full"),
+            "split": getattr(active_demo_repository, "split", "chronological_test"),
+            "labels_available": getattr(
+                active_demo_repository, "labels_available", True
+            ),
             "labels_hidden": True,
             "transactions": transactions,
         }
@@ -319,6 +322,9 @@ def create_app(
         payload = await _repository_call(active_demo_repository.get, transaction_id)
         return {
             "transaction_id": transaction_id,
+            "labels_available": getattr(
+                active_demo_repository, "labels_available", True
+            ),
             "labels_hidden": True,
             "transaction_payload": payload,
         }

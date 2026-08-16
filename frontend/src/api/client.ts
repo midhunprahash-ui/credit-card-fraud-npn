@@ -55,6 +55,9 @@ export const api = {
   metrics: () => request<MetricsSummary>("/metrics/summary"),
   demoTransactions: (limit = 20) =>
     request<{
+      dataset: string;
+      split: string;
+      labels_available: boolean;
       transactions: Array<{
         transaction_id: number;
         transaction_dt: number;
@@ -64,9 +67,10 @@ export const api = {
       }>;
     }>(`/demo-transactions?limit=${limit}`),
   transaction: (transactionId: number) =>
-    request<{ transaction_payload: Record<string, unknown> }>(
-      `/transactions/${transactionId}`,
-    ),
+    request<{
+      labels_available: boolean;
+      transaction_payload: Record<string, unknown>;
+    }>(`/transactions/${transactionId}`),
   predict: (
     transaction: Record<string, unknown>,
     modelIdentifiers: ModelIdentifier[],

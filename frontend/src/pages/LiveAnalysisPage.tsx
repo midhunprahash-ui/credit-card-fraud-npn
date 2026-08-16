@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, subscribeToStream, type StreamMessage } from "../api/client";
 import type {
@@ -108,21 +108,61 @@ export function LiveAnalysisPage({
 }
 
 function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
-  const [jsonText, setJsonText] = useState(
-    JSON.stringify(
-      {
-        TransactionID: 3488959,
-        TransactionDT: 13151880,
-        TransactionAmt: 57.95,
-        ProductCD: "W",
-      },
-      null,
-      2,
-    ),
-  );
+  const [jsonText, setJsonText] = useState("{}");
+  const [demoTransactions, setDemoTransactions] = useState<
+    Array<{ transaction_id: number }>
+  >([]);
+  const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  const [loadingTransaction, setLoadingTransaction] = useState(true);
+  const loadRequestId = useRef(0);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loadTransaction = useCallback(async (transactionId: number) => {
+    const requestId = ++loadRequestId.current;
+    setLoadingTransaction(true);
+    setError(null);
+    try {
+      const detail = await api.transaction(transactionId);
+      if (requestId !== loadRequestId.current) return;
+      setSelectedTransactionId(String(transactionId));
+      setJsonText(JSON.stringify(detail.transaction_payload, null, 2));
+    } catch (caught) {
+      if (requestId !== loadRequestId.current) return;
+      setError(
+        caught instanceof Error ? caught.message : "Could not load transaction",
+      );
+    } finally {
+      if (requestId === loadRequestId.current) setLoadingTransaction(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .demoTransactions(100)
+      .then((response) => {
+        if (cancelled) return;
+        setDemoTransactions(response.transactions);
+        const first = response.transactions[0];
+        if (first) return loadTransaction(first.transaction_id);
+        setLoadingTransaction(false);
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setLoadingTransaction(false);
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Kaggle inference sample is unavailable",
+        );
+      });
+    return () => {
+      cancelled = true;
+      loadRequestId.current += 1;
+    };
+  }, [loadTransaction]);
 
   async function predict() {
     if (!models.length) {
@@ -149,6 +189,29 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
   return (
     <div className="single-layout">
       <Panel title="Transaction JSON" eyebrow="One raw transaction">
+        <label className="field">
+          <span>Unlabelled Kaggle test transaction</span>
+          <select
+            value={selectedTransactionId}
+            disabled={loadingTransaction || !demoTransactions.length}
+            onChange={(event) =>
+              void loadTransaction(Number(event.target.value))
+            }
+          >
+            {demoTransactions.map((transaction) => (
+              <option
+                key={transaction.transaction_id}
+                value={transaction.transaction_id}
+              >
+                TransactionID {transaction.transaction_id}
+              </option>
+            ))}
+          </select>
+          <small>
+            Loads the complete transaction and matching identity payload. Ground
+            truth is not available for Kaggle test rows.
+          </small>
+        </label>
         <label className="field" htmlFor="transaction-json">
           <span>JSON input</span>
           <textarea
@@ -171,7 +234,7 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
           </span>
           <button
             className="button button-primary"
-            disabled={loading || !models.length}
+            disabled={loading || loadingTransaction || !models.length}
             onClick={() => void predict()}
           >
             {loading ? "Running prediction…" : "Run prediction"}
@@ -339,6 +402,7 @@ function RealtimeWorkspace({
               {datasets.map((dataset) => (
                 <option value={dataset.id} key={dataset.id}>
                   {dataset.name} · {formatNumber(dataset.row_count)} rows
+                  {dataset.labels_available ? " · Labelled" : " · Unlabelled"}
                 </option>
               ))}
             </select>
@@ -499,7 +563,7 @@ function LiveTable({ rows }: { rows: CompletedStreamEvent[] }) {
             <th>Transaction</th>
             <th>Highest risk</th>
             <th>Fraud votes</th>
-            <th>Actual label</th>
+            <th>Ground truth</th>
             <th>Latency</th>
             <th>Status</th>
           </tr>
@@ -527,9 +591,13 @@ function LiveTable({ rows }: { rows: CompletedStreamEvent[] }) {
                     : "—"}
                 </td>
                 <td>
-                  <StatusBadge tone={row.actual_label ? "high" : "low"}>
-                    {row.actual_label ? "Fraud" : "Legitimate"}
-                  </StatusBadge>
+                  {row.actual_label === null ? (
+                    <StatusBadge tone="neutral">Not available</StatusBadge>
+                  ) : (
+                    <StatusBadge tone={row.actual_label ? "high" : "low"}>
+                      {row.actual_label ? "Fraud" : "Legitimate"}
+                    </StatusBadge>
+                  )}
                 </td>
                 <td>{formatLatency(row.latency_ms)}</td>
                 <td>{row.status}</td>

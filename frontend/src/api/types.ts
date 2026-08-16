@@ -83,6 +83,17 @@ export type PredictionResponse = {
   agreement: Agreement;
 };
 
+export type ExplanationResponse = {
+  transaction_id: number;
+  model_identifier: ModelIdentifier;
+  method: "local_feature_contribution";
+  important_features: Array<{
+    feature: string;
+    contribution: number;
+    direction: "toward_fraud" | "toward_not_fraud";
+  }>;
+};
+
 export type BatchResponse = {
   summary: {
     total_rows: number;

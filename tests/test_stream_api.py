@@ -37,7 +37,9 @@ class FakeStreamController:
 
 def test_stream_control_endpoints_use_typed_configuration() -> None:
     controller = FakeStreamController()
-    client = TestClient(create_app(Settings(), stream_controller=controller))
+    client = TestClient(
+        create_app(Settings(_env_file=None), stream_controller=controller)
+    )
 
     datasets = client.get("/stream/datasets")
     assert datasets.status_code == 200
@@ -66,7 +68,9 @@ def test_stream_control_endpoints_use_typed_configuration() -> None:
 
 def test_stream_start_rejects_unsupported_rate_and_duplicate_models() -> None:
     client = TestClient(
-        create_app(Settings(), stream_controller=FakeStreamController())
+        create_app(
+            Settings(_env_file=None), stream_controller=FakeStreamController()
+        )
     )
     response = client.post(
         "/stream/start",
@@ -80,7 +84,7 @@ def test_stream_start_rejects_unsupported_rate_and_duplicate_models() -> None:
 
 
 def test_streaming_is_unavailable_without_server_supabase_configuration() -> None:
-    client = TestClient(create_app(Settings()))
+    client = TestClient(create_app(Settings(_env_file=None)))
     response = client.get("/stream/status")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "streaming_unavailable"

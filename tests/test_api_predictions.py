@@ -63,6 +63,22 @@ class FakePredictionService:
             },
         }
 
+    def explain(
+        self, transaction: dict[str, Any], model_identifier: str
+    ) -> dict[str, Any]:
+        return {
+            "transaction_id": int(transaction["TransactionID"]),
+            "model_identifier": model_identifier,
+            "method": "local_feature_contribution",
+            "important_features": [
+                {
+                    "feature": "TransactionAmt",
+                    "contribution": 0.12,
+                    "direction": "toward_fraud",
+                }
+            ],
+        }
+
 
 class FakeDemoRepository:
     dataset_name = "kaggle_inference_sample"
@@ -93,7 +109,7 @@ class FakeDemoRepository:
 def client(settings: Settings | None = None) -> TestClient:
     return TestClient(
         create_app(
-            settings or Settings(),
+            settings or Settings(_env_file=None),
             prediction_service=FakePredictionService(),
             demo_repository=FakeDemoRepository(),
         )
@@ -154,6 +170,27 @@ def test_single_prediction_returns_independent_results_and_agreement() -> None:
     }
 
 
+def test_local_explanation_is_returned_on_demand() -> None:
+    response = client().post(
+        "/explain",
+        json={
+            "model_identifier": "catboost.v2",
+            "transaction": {
+                "TransactionID": 100,
+                "TransactionDT": 500,
+                "TransactionAmt": 25,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["important_features"][0] == {
+        "feature": "TransactionAmt",
+        "contribution": 0.12,
+        "direction": "toward_fraud",
+    }
+
+
 def test_one_row_csv_uses_single_prediction_contract() -> None:
     response = client().post(
         "/predict/file",
@@ -182,7 +219,10 @@ def test_request_validation_has_standard_safe_error() -> None:
 
 
 def test_batch_reports_duplicate_rows_and_versioned_columns() -> None:
-    csv = b"TransactionID,TransactionDT,TransactionAmt\n100,500,25\n101,501,30\n101,502,40\n"
+    csv = (
+        b"TransactionID,TransactionDT,TransactionAmt,isFraud\n"
+        b"100,500,25,1\n101,501,30,0\n101,502,40,1\n"
+    )
     response = client().post(
         "/predict/batch",
         data={"models": json.dumps(["catboost.v2", "lightgbm.v1"])},
@@ -200,6 +240,8 @@ def test_batch_reports_duplicate_rows_and_versioned_columns() -> None:
     }
     assert "CatBoost.V2_score" in body["results"][0]
     assert "LightGBM.V1_decision" in body["results"][0]
+    assert body["results"][0]["input_payload"]["TransactionAmt"] == 25
+    assert "isFraud" not in body["results"][0]["input_payload"]
     assert {
         row["error_code"] for row in body["invalid_row_report"]
     } == {"duplicate_transaction_id"}
@@ -243,7 +285,9 @@ def test_batch_zip_contains_results_and_invalid_row_downloads() -> None:
             "invalid_rows.csv",
             "summary.json",
         }
-        assert b"CatBoost.V2_score" in archive.read("prediction_results.csv")
+        prediction_csv = archive.read("prediction_results.csv")
+        assert b"CatBoost.V2_score" in prediction_csv
+        assert b"input_payload" not in prediction_csv
 
 
 @pytest.mark.parametrize(
@@ -266,7 +310,7 @@ def test_batch_rejects_invalid_uploads(
 
 
 def test_batch_enforces_upload_size_before_parsing() -> None:
-    api = client(Settings(batch_max_file_bytes=20))
+    api = client(Settings(_env_file=None, batch_max_file_bytes=20))
     response = api.post(
         "/predict/batch",
         data={"models": '["catboost.v2"]'},

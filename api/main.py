@@ -37,6 +37,8 @@ from .r2 import R2Gateway, create_r2_client
 from .schemas import (
     AlertActionRequest,
     BatchPredictionResponse,
+    ExplanationRequest,
+    ExplanationResponse,
     PredictionRequest,
     PredictionResponse,
     StreamStartRequest,
@@ -335,6 +337,14 @@ def create_app(
             active_prediction_service.predict,
             request.transaction,
             request.model_identifiers,
+        )
+
+    @app.post("/explain", response_model=ExplanationResponse)
+    async def explain(request: ExplanationRequest) -> dict[str, Any]:
+        return await run_in_threadpool(
+            active_prediction_service.explain,
+            request.transaction,
+            request.model_identifier,
         )
 
     @app.post("/predict/file", response_model=PredictionResponse)

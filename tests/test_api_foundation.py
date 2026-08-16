@@ -6,6 +6,7 @@ from api.settings import Settings
 
 def test_health_reports_eight_registered_models_without_secrets() -> None:
     settings = Settings(
+        _env_file=None,
         r2_endpoint_url=None,
         r2_access_key_id=None,
         r2_secret_access_key=None,
@@ -47,7 +48,7 @@ def test_app_starts_and_stops_with_supabase_configured() -> None:
 
 
 def test_model_catalog_uses_canonical_v1_v2_names() -> None:
-    client = TestClient(create_app(Settings()))
+    client = TestClient(create_app(Settings(_env_file=None)))
 
     response = client.get("/models", params={"version": "V2"})
 
@@ -67,7 +68,7 @@ def test_model_catalog_uses_canonical_v1_v2_names() -> None:
 
 
 def test_model_version_filter_rejects_unknown_versions() -> None:
-    client = TestClient(create_app(Settings()))
+    client = TestClient(create_app(Settings(_env_file=None)))
 
     response = client.get("/models", params={"version": "V3"})
 
@@ -75,7 +76,7 @@ def test_model_version_filter_rejects_unknown_versions() -> None:
 
 
 def test_model_catalog_exposes_comparison_metrics_when_artifacts_are_local() -> None:
-    client = TestClient(create_app(Settings()))
+    client = TestClient(create_app(Settings(_env_file=None)))
 
     response = client.get("/models", params={"version": "V2"})
 

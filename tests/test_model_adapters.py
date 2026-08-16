@@ -17,6 +17,11 @@ class FixedScoreAdapter(ModelAdapter):
         return self.scores
 
 
+class AmountScoreAdapter(ModelAdapter):
+    def _predict_scores(self, frame: pd.DataFrame) -> np.ndarray:
+        return frame["amount"].fillna(0).to_numpy(dtype=float) / 100
+
+
 def spec_for(directory: Path) -> ModelSpec:
     (directory / "feature_schema.json").write_text(
         '{"groups":{"numeric":["amount"],"low_cardinality":[],"high_cardinality":[]}}'
@@ -55,3 +60,17 @@ def test_adapter_rejects_missing_and_protected_features(tmp_path: Path) -> None:
         adapter.predict(pd.DataFrame({"amount": [1], "isFraud": [1]}))
     assert isinstance(protected.value.__cause__, ValueError)
     assert "Protected" in str(protected.value.__cause__)
+
+
+def test_local_explanation_reports_feature_score_sensitivity(tmp_path: Path) -> None:
+    adapter = AmountScoreAdapter(spec_for(tmp_path))
+
+    features = adapter.explain_one(pd.DataFrame({"amount": [25.0]}))
+
+    assert features == [
+        {
+            "feature": "amount",
+            "contribution": 0.25,
+            "direction": "toward_fraud",
+        }
+    ]

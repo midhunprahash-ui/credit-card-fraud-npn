@@ -3,6 +3,7 @@ import type {
   BatchResponse,
   CompletedStreamEvent,
   FraudAlert,
+  ExplanationResponse,
   Health,
   IntegrationStatus,
   MetricsSummary,
@@ -81,6 +82,18 @@ export const api = {
       body: JSON.stringify({
         transaction,
         model_identifiers: modelIdentifiers,
+      }),
+    }),
+  explain: (
+    transaction: Record<string, unknown>,
+    modelIdentifier: ModelIdentifier,
+  ) =>
+    request<ExplanationResponse>("/explain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transaction,
+        model_identifier: modelIdentifier,
       }),
     }),
   predictFile: async (file: File, modelIdentifiers: ModelIdentifier[]) => {

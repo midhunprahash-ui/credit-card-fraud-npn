@@ -21,6 +21,20 @@ class PredictionRequest(BaseModel):
         return value
 
 
+class ExplanationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_identifier: str
+    transaction: dict[str, Any]
+
+
+class ExplanationResponse(BaseModel):
+    transaction_id: int
+    model_identifier: str
+    method: str
+    important_features: list[dict[str, Any]]
+
+
 class ModelPredictionResponse(BaseModel):
     model_identifier: str
     model_name: str

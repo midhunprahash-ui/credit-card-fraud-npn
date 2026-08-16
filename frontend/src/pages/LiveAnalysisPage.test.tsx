@@ -61,14 +61,14 @@ vi.mock("../api/client", async (importOriginal) => {
       streamDatasets: vi.fn().mockResolvedValue({
         datasets: [
           {
-            id: "demo",
-            name: "Demo",
-            split: "held_out",
+            id: "kaggle",
+            name: "kaggle_inference_sample",
+            split: "kaggle_inference",
             schema_version: "v1",
-            row_count: 600,
-            fraud_count: 21,
-            fraud_rate: 0.035,
-            labels_available: true,
+            row_count: 100,
+            fraud_count: null,
+            fraud_rate: null,
+            labels_available: false,
             description: null,
             status: "READY",
           },
@@ -160,6 +160,9 @@ describe("Fraud prediction workspace", () => {
         },
       });
     });
-    expect(screen.getByText("Not available")).toBeVisible();
+    expect(
+      screen.getByRole("columnheader", { name: "Transaction ID" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Ground truth")).not.toBeInTheDocument();
   });
 });

@@ -885,6 +885,89 @@ tbody tr:hover {
   display: grid;
   gap: 12px;
 }
+.prediction-table-wrap {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.prediction-table {
+  min-width: 760px;
+}
+.prediction-row {
+  cursor: pointer;
+}
+.prediction-row.prediction-fraud {
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.prediction-row.prediction-not-fraud {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+.row-expand-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+.decision-fraud,
+.decision-not-fraud {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.decision-fraud {
+  color: var(--red);
+  background: var(--red-soft);
+}
+.decision-not-fraud {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.decision-empty {
+  color: var(--faint);
+}
+.prediction-detail-row:hover {
+  background: var(--surface);
+}
+.prediction-detail-row > td {
+  padding: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 2px solid var(--line);
+}
+.prediction-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.8fr) minmax(420px, 1.2fr);
+  gap: 0;
+  background: var(--surface-2);
+}
+.prediction-detail-grid > section {
+  min-width: 0;
+  padding: 18px;
+  border-right: 1px solid var(--line);
+}
+.prediction-detail-grid > section:last-child {
+  border-right: 0;
+}
+.prediction-detail-grid h4 {
+  margin: 0 0 12px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.feature-driver-table,
+.input-values-scroll {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+.input-values-scroll {
+  max-height: 300px;
+  overflow: auto;
+}
+.detail-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
 .prediction-summary {
   display: flex;
   align-items: center;
@@ -1665,6 +1748,13 @@ tbody tr:hover {
   }
   .health-grid {
     grid-template-columns: 1fr;
+  }
+  .prediction-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .prediction-detail-grid > section {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
   }
   .callout {
     align-items: flex-start;

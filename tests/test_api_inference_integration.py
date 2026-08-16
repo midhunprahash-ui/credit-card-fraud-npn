@@ -24,7 +24,9 @@ REQUIRED_LOCAL_ASSETS = [
     reason="Local ignored held-out data and selected artifacts are required",
 )
 def test_real_heldout_transaction_scores_through_v1_and_v2_api() -> None:
-    client = TestClient(create_app(Settings(model_cache_size=2)))
+    client = TestClient(
+        create_app(Settings(_env_file=None, model_cache_size=2))
+    )
     listing = client.get("/demo-transactions", params={"limit": 1})
     transaction_id = listing.json()["transactions"][0]["transaction_id"]
     detail = client.get(f"/transactions/{transaction_id}")

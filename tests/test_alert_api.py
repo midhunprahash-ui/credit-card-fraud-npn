@@ -27,7 +27,9 @@ class FakeAlertRepository:
 
 def test_alert_queue_detail_and_action_contracts() -> None:
     repository = FakeAlertRepository()
-    client = TestClient(create_app(Settings(), alert_repository=repository))
+    client = TestClient(
+        create_app(Settings(_env_file=None), alert_repository=repository)
+    )
 
     queue = client.get("/alerts", params={"status": "OPEN", "limit": 10})
     assert queue.status_code == 200
@@ -52,7 +54,9 @@ def test_alert_queue_detail_and_action_contracts() -> None:
 
 def test_alert_contract_rejects_invalid_status_uuid_and_action() -> None:
     client = TestClient(
-        create_app(Settings(), alert_repository=FakeAlertRepository())
+        create_app(
+            Settings(_env_file=None), alert_repository=FakeAlertRepository()
+        )
     )
     assert client.get("/alerts", params={"status": "ANYTHING"}).status_code == 422
     assert client.get("/alerts/not-a-uuid").status_code == 422
@@ -64,7 +68,7 @@ def test_alert_contract_rejects_invalid_status_uuid_and_action() -> None:
 
 
 def test_alert_store_requires_server_supabase_configuration() -> None:
-    client = TestClient(create_app(Settings()))
+    client = TestClient(create_app(Settings(_env_file=None)))
     response = client.get("/alerts")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "alert_store_unavailable"

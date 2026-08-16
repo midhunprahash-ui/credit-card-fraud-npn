@@ -1,8 +1,26 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import type { PredictionResponse } from "../api/types";
 import { PredictionResults } from "./PredictionResults";
+
+vi.mock("../api/client", () => ({
+  api: {
+    explain: vi.fn().mockResolvedValue({
+      transaction_id: 3488959,
+      model_identifier: "lightgbm.v1",
+      method: "local_feature_contribution",
+      important_features: [
+        {
+          feature: "TransactionAmt",
+          contribution: 0.12,
+          direction: "toward_fraud",
+        },
+      ],
+    }),
+  },
+}));
 
 const prediction: PredictionResponse = {
   transaction_id: 3488959,
@@ -46,13 +64,43 @@ const prediction: PredictionResponse = {
 };
 
 describe("PredictionResults", () => {
-  it("shows the classification returned by every selected model", () => {
-    render(<PredictionResults prediction={prediction} />);
-    expect(screen.getByText("Models differ")).toBeInTheDocument();
+  it("shows every selected model in one simple classification table", () => {
+    render(
+      <PredictionResults
+        prediction={prediction}
+        input={{ TransactionID: 3488959, TransactionDT: 100 }}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Fraud" })).toBeVisible();
     expect(
-      screen.getByText(/1 of 2 models predicted fraud/i),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("Fraud-risk score")).toHaveLength(2);
+      screen.getByRole("columnheader", { name: "Not fraud" }),
+    ).toBeVisible();
+    expect(screen.getByText("● FRAUD")).toBeVisible();
+    expect(screen.getByText("● NOT FRAUD")).toBeVisible();
     expect(screen.getByText("CatBoost.V2")).toBeInTheDocument();
+  });
+
+  it("reveals transaction inputs and local features when a row is opened", async () => {
+    render(
+      <PredictionResults
+        prediction={prediction}
+        input={{
+          TransactionID: 3488959,
+          TransactionDT: 100,
+          TransactionAmt: 57.95,
+        }}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /3488959/ })[0],
+    );
+
+    expect(
+      await screen.findByText("Strongest decision features"),
+    ).toBeVisible();
+    expect(screen.getByText("Transaction inputs (3)")).toBeVisible();
+    expect(screen.getAllByText("TransactionAmt")).toHaveLength(2);
+    expect(await screen.findByText("Toward fraud")).toBeVisible();
   });
 });

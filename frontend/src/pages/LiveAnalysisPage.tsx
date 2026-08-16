@@ -13,13 +13,13 @@ import type {
 import { BatchPanel } from "../components/BatchPanel";
 import { FilterBar } from "../components/FilterBar";
 import { Icon } from "../components/Icon";
+import { PredictionTable } from "../components/PredictionTable";
 import { PredictionResults } from "../components/PredictionResults";
 import {
   EmptyState,
   ErrorState,
   PageHeader,
   Panel,
-  RiskScore,
   StatCard,
   StatusBadge,
 } from "../components/ui";
@@ -116,6 +116,9 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
   const [loadingTransaction, setLoadingTransaction] = useState(true);
   const loadRequestId = useRef(0);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  const [predictionInput, setPredictionInput] = useState<
+    Record<string, unknown>
+  >({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,9 +179,11 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
       const parsed: unknown = JSON.parse(jsonText);
       if (!parsed || Array.isArray(parsed) || typeof parsed !== "object")
         throw new Error("JSON must contain one transaction object.");
-      setPrediction(
-        await api.predict(parsed as Record<string, unknown>, models),
-      );
+      const input = parsed as Record<string, unknown>;
+      setPrediction(await api.predict(input, models));
+      const displayInput = { ...input };
+      delete displayInput.isFraud;
+      setPredictionInput(displayInput);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Prediction failed");
     } finally {
@@ -244,7 +249,7 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
       </Panel>
       <div>
         {prediction ? (
-          <PredictionResults prediction={prediction} />
+          <PredictionResults prediction={prediction} input={predictionInput} />
         ) : (
           <EmptyState
             title="Ready to classify"
@@ -318,9 +323,14 @@ function RealtimeWorkspace({
   useEffect(() => {
     Promise.all([api.streamDatasets(), api.streamStatus()])
       .then(([data, initial]) => {
-        setDatasets(data.datasets);
-        setDatasetId(data.datasets[0]?.id ?? "");
+        const inferenceDatasets = data.datasets.filter(
+          (dataset) => dataset.name === "kaggle_inference_sample",
+        );
+        setDatasets(inferenceDatasets);
+        setDatasetId(inferenceDatasets[0]?.id ?? "");
         setStatus(initial);
+        if (!inferenceDatasets.length)
+          setError("The 100-row Kaggle inference dataset is unavailable.");
       })
       .catch((caught) =>
         setError(
@@ -374,14 +384,22 @@ function RealtimeWorkspace({
   const active = ["RUNNING", "PAUSED", "LOADING", "STOPPING"].includes(
     status.status,
   );
-  const latestPrediction = completed.find(
-    (event) => event.results.length && event.agreement,
+  const predictionRows = completed.flatMap((event) =>
+    event.results.map((result) => ({
+      key: `${event.sequence_number}-${result.model_identifier}`,
+      transactionId: event.transaction_id,
+      modelIdentifier: result.model_identifier,
+      modelName: result.model_name,
+      decision: result.decision,
+      score: result.risk_score,
+      threshold: result.threshold,
+    })),
   );
   return (
     <div className="realtime-workspace">
       <Panel
         title="Stream controls"
-        eyebrow="Chronological held-out replay"
+        eyebrow="100 unlabelled Kaggle transactions"
         actions={
           <div className="connection-status">
             <span
@@ -507,9 +525,16 @@ function RealtimeWorkspace({
         />
       </div>
       <div className="dashboard-grid">
-        <Panel title="Live transactions" eyebrow="Completed in FIFO order">
+        <Panel title="Live predictions" eyebrow="Completed in FIFO order">
           {completed.length ? (
-            <LiveTable rows={completed} />
+            <PredictionTable
+              rows={predictionRows}
+              loadInput={(transactionId) =>
+                api
+                  .transaction(transactionId)
+                  .then((response) => response.transaction_payload)
+              }
+            />
           ) : (
             <EmptyState
               title="No completed transactions"
@@ -539,73 +564,6 @@ function RealtimeWorkspace({
           )}
         </Panel>
       </div>
-      {latestPrediction ? (
-        <PredictionResults
-          prediction={{
-            transaction_id: latestPrediction.transaction_id,
-            input_completeness: 1,
-            results: latestPrediction.results,
-            agreement: latestPrediction.agreement!,
-          }}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function LiveTable({ rows }: { rows: CompletedStreamEvent[] }) {
-  return (
-    <div className="table-scroll live-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Seq</th>
-            <th>Transaction</th>
-            <th>Highest risk</th>
-            <th>Fraud votes</th>
-            <th>Ground truth</th>
-            <th>Latency</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const maximum = Math.max(
-              0,
-              ...row.results.map((result) => result.risk_score),
-            );
-            return (
-              <tr key={row.sequence_number}>
-                <td className="mono">{row.sequence_number}</td>
-                <td className="mono">{row.transaction_id}</td>
-                <td>
-                  {row.results.length ? (
-                    <RiskScore score={maximum} compact />
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td>
-                  {row.agreement
-                    ? `${row.agreement.fraud_vote_count}/${row.agreement.selected_model_count}`
-                    : "—"}
-                </td>
-                <td>
-                  {row.actual_label === null ? (
-                    <StatusBadge tone="neutral">Not available</StatusBadge>
-                  ) : (
-                    <StatusBadge tone={row.actual_label ? "high" : "low"}>
-                      {row.actual_label ? "Fraud" : "Legitimate"}
-                    </StatusBadge>
-                  )}
-                </td>
-                <td>{formatLatency(row.latency_ms)}</td>
-                <td>{row.status}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }

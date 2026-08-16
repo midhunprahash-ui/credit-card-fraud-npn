@@ -10,11 +10,9 @@ describe("FilterBar", () => {
       <FilterBar
         versions={["V2"]}
         models={["catboost.v2"]}
-        inputMode="Manual"
         locked={false}
         onVersionsChange={vi.fn()}
         onModelsChange={vi.fn()}
-        onInputModeChange={vi.fn()}
       />,
     );
     expect(screen.getByText("CatBoost.V2")).toBeInTheDocument();
@@ -22,20 +20,17 @@ describe("FilterBar", () => {
   });
 
   it("locks configuration while a stream is running", async () => {
-    const onMode = vi.fn();
     render(
       <FilterBar
         versions={["V1", "V2"]}
         models={["catboost.v2"]}
-        inputMode="Real-time"
         locked
         onVersionsChange={vi.fn()}
         onModelsChange={vi.fn()}
-        onInputModeChange={onMode}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Manual" }));
-    expect(onMode).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByLabelText("V1"));
+    expect(screen.getByLabelText("V1")).toBeChecked();
     expect(screen.getByText("Configuration locked")).toBeInTheDocument();
   });
 });

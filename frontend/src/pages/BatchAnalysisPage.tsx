@@ -26,14 +26,11 @@ export function BatchAnalysisPage({
       <FilterBar
         versions={filters.versions}
         models={filters.models}
-        inputMode="Manual"
         locked={false}
-        inputModeLocked
         onVersionsChange={(versions) =>
           onFiltersChange({ ...filters, versions })
         }
         onModelsChange={(models) => onFiltersChange({ ...filters, models })}
-        onInputModeChange={() => undefined}
       />
       <BatchPanel models={filters.models} />
     </>

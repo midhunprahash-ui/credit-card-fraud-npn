@@ -133,15 +133,12 @@ Responsibilities:
 
 Responsibilities:
 
-- Six analyst pages: Overview, Live Analysis, Fraud Alerts, Batch Analysis,
-  Model Comparison, and Monitoring.
-- Sticky V1/V2 and version-aware model filters with Manual and Real-time modes.
-- Real demonstration transaction, simplified form, JSON, one-row CSV, and batch
-  CSV scoring workflows.
+- One focused prediction page with version-aware V1/V2 model filters.
+- Single JSON, batch CSV, and chronological Real-time input modes.
 - Direct Render SSE updates, FIFO backlog visibility, and stream controls.
-- Side-by-side fraud-risk scores, thresholds, agreement, latency, completeness,
-  and saved global feature evidence.
-- Prioritized alert investigation with audited analyst actions and notes.
+- Side-by-side Fraud or Legitimate classifications, fraud-risk scores, saved
+  thresholds, and latency.
+- No analyst case decisions, escalation, notes, or alert-management workflow.
 
 ## 7. Cloud deployment plan
 
@@ -210,12 +207,11 @@ Do not force-push, rewrite shared history, commit generated data/models, or merg
 
 ## 11. Demo script
 
-1. Open the cloud dashboard.
-2. Submit a transaction or upload the demo batch.
-3. Sort the queue by fraud probability.
-4. Select one high-risk transaction and show its risk signals.
-5. Explain the selected review threshold and analyst action.
-6. Show model metrics, then the API health endpoint.
+1. Open CYPHER and select a version and trained model.
+2. Paste one transaction JSON and run the prediction.
+3. Show the model classification, score, saved threshold, and latency.
+4. Upload a CSV and download the row-level prediction results.
+5. Start the chronological Real-time replay and show FIFO processing.
 
 ## 12. Change log
 
@@ -224,3 +220,4 @@ Do not force-push, rewrite shared history, commit generated data/models, or merg
 | 2026-08-13 | Repository initialized and project plan documented | Codex / team |
 | 2026-08-13 | Two-branch Git workflow adopted | Codex / team |
 | 2026-08-16 | Six-page V1/V2 Fraud Intelligence Console implemented and tested | Codex / team |
+| 2026-08-16 | Public UI simplified to JSON, CSV, and Real-time ML classification | Codex / team |

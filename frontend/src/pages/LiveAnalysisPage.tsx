@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api, subscribeToStream, type StreamMessage } from "../api/client";
 import type {
@@ -23,13 +23,14 @@ import {
   StatCard,
   StatusBadge,
 } from "../components/ui";
-import { formatCurrency, formatLatency, formatNumber } from "../utils/format";
+import { formatLatency, formatNumber } from "../utils/format";
 
 type Filters = {
   versions: VersionName[];
   models: ModelIdentifier[];
-  inputMode: "Manual" | "Real-time";
 };
+
+type InputMode = "json" | "csv" | "realtime";
 
 export function LiveAnalysisPage({
   filters,
@@ -38,30 +39,54 @@ export function LiveAnalysisPage({
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
 }) {
+  const [inputMode, setInputMode] = useState<InputMode>("json");
   const [streamStatus, setStreamStatus] = useState<string>("IDLE");
   const locked = ["LOADING", "RUNNING", "STOPPING"].includes(streamStatus);
   return (
     <>
       <PageHeader
-        eyebrow="Prediction workspace"
-        title="Live analysis"
-        description="Score real transactions manually or replay the labelled chronological held-out partition through a strict FIFO stream."
+        eyebrow="ML classification"
+        title="Fraud prediction"
+        description="Choose trained model pipelines, then classify a single JSON transaction, a CSV file, or a chronological real-time replay."
       />
       <FilterBar
         versions={filters.versions}
         models={filters.models}
-        inputMode={filters.inputMode}
         locked={locked}
         onVersionsChange={(versions) =>
           onFiltersChange({ ...filters, versions })
         }
         onModelsChange={(models) => onFiltersChange({ ...filters, models })}
-        onInputModeChange={(inputMode) =>
-          onFiltersChange({ ...filters, inputMode })
-        }
       />
-      {filters.inputMode === "Manual" ? (
-        <ManualWorkspace models={filters.models} />
+      <div
+        className="prediction-mode-tabs"
+        role="tablist"
+        aria-label="Input type"
+      >
+        {(
+          [
+            ["json", "Single JSON"],
+            ["csv", "CSV Upload"],
+            ["realtime", "Real-time"],
+          ] as const
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            role="tab"
+            type="button"
+            aria-selected={inputMode === mode}
+            className={inputMode === mode ? "active" : ""}
+            disabled={locked && inputMode !== mode}
+            onClick={() => setInputMode(mode)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {inputMode === "json" ? (
+        <SingleJsonPanel models={filters.models} />
+      ) : inputMode === "csv" ? (
+        <BatchPanel models={filters.models} />
       ) : (
         <RealtimeWorkspace
           models={filters.models}
@@ -72,76 +97,23 @@ export function LiveAnalysisPage({
   );
 }
 
-function ManualWorkspace({ models }: { models: ModelIdentifier[] }) {
-  const [tab, setTab] = useState<"single" | "csv">("single");
-  return (
-    <div className="workspace">
-      <div className="tabs" role="tablist" aria-label="Manual input">
-        <button
-          role="tab"
-          aria-selected={tab === "single"}
-          className={tab === "single" ? "active" : ""}
-          onClick={() => setTab("single")}
-        >
-          Single Transaction
-        </button>
-        <button
-          role="tab"
-          aria-selected={tab === "csv"}
-          className={tab === "csv" ? "active" : ""}
-          onClick={() => setTab("csv")}
-        >
-          CSV Upload
-        </button>
-      </div>
-      {tab === "single" ? (
-        <SingleTransactionPanel models={models} />
-      ) : (
-        <BatchPanel models={models} />
-      )}
-    </div>
+function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
+  const [jsonText, setJsonText] = useState(
+    JSON.stringify(
+      {
+        TransactionID: 3488959,
+        TransactionDT: 13151880,
+        TransactionAmt: 57.95,
+        ProductCD: "W",
+      },
+      null,
+      2,
+    ),
   );
-}
-
-type DemoSummary = {
-  transaction_id: number;
-  transaction_dt: number;
-  transaction_amount: number | null;
-  product_code: string | null;
-  has_identity: boolean;
-};
-
-function SingleTransactionPanel({ models }: { models: ModelIdentifier[] }) {
-  const [method, setMethod] = useState<"demo" | "form" | "json" | "file">(
-    "demo",
-  );
-  const [demos, setDemos] = useState<DemoSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [payload, setPayload] = useState<Record<string, unknown>>({
-    TransactionID: 3488959,
-    TransactionDT: 13151880,
-    TransactionAmt: 57.95,
-    ProductCD: "W",
-  });
-  const [jsonText, setJsonText] = useState(JSON.stringify(payload, null, 2));
-  const [oneRowFile, setOneRowFile] = useState<File | null>(null);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api
-      .demoTransactions(30)
-      .then((result) => {
-        setDemos(result.transactions);
-        if (result.transactions[0])
-          setSelectedId(result.transactions[0].transaction_id);
-      })
-      .catch((caught) =>
-        setError(
-          caught instanceof Error ? caught.message : "Demo data unavailable",
-        ),
-      );
-  }, []);
+
   async function predict() {
     if (!models.length) {
       setError("Select at least one model.");
@@ -151,162 +123,38 @@ function SingleTransactionPanel({ models }: { models: ModelIdentifier[] }) {
     setError(null);
     setPrediction(null);
     try {
-      if (method === "file") {
-        if (!oneRowFile) throw new Error("Choose a one-row CSV file.");
-        setPrediction(await api.predictFile(oneRowFile, models));
-      } else {
-        let transaction = payload;
-        if (method === "demo") {
-          if (!selectedId)
-            throw new Error("Choose a demonstration transaction.");
-          transaction = (await api.transaction(selectedId)).transaction_payload;
-          setPayload(transaction);
-          setJsonText(JSON.stringify(transaction, null, 2));
-        } else if (method === "json") {
-          const parsed: unknown = JSON.parse(jsonText);
-          if (!parsed || Array.isArray(parsed) || typeof parsed !== "object")
-            throw new Error("JSON must contain one transaction object.");
-          transaction = parsed as Record<string, unknown>;
-        }
-        setPrediction(await api.predict(transaction, models));
-      }
+      const parsed: unknown = JSON.parse(jsonText);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object")
+        throw new Error("JSON must contain one transaction object.");
+      setPrediction(
+        await api.predict(parsed as Record<string, unknown>, models),
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Prediction failed");
     } finally {
       setLoading(false);
     }
   }
+
   return (
     <div className="single-layout">
-      <Panel title="Transaction input" eyebrow="Raw joined transaction">
-        <div className="method-grid">
-          {(
-            [
-              ["demo", "Real transaction"],
-              ["form", "Simplified form"],
-              ["json", "Complete JSON"],
-              ["file", "One-row CSV"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              className={method === id ? "method-card active" : "method-card"}
-              onClick={() => setMethod(id)}
-            >
-              <span>{label}</span>
-              <small>
-                {id === "demo"
-                  ? "Recommended"
-                  : id === "json"
-                    ? "All raw fields"
-                    : id === "file"
-                      ? "CSV contract"
-                      : "Required fields"}
-              </small>
-            </button>
-          ))}
-        </div>
-        {method === "demo" ? (
-          <label className="field">
-            <span>Held-out TransactionID</span>
-            <select
-              value={selectedId ?? ""}
-              onChange={(event) => setSelectedId(Number(event.target.value))}
-            >
-              {demos.map((demo) => (
-                <option key={demo.transaction_id} value={demo.transaction_id}>
-                  {demo.transaction_id} ·{" "}
-                  {formatCurrency(demo.transaction_amount ?? 0)} ·{" "}
-                  {demo.product_code ?? "Unknown"}
-                  {demo.has_identity ? " · identity joined" : ""}
-                </option>
-              ))}
-            </select>
-            <small>The label is hidden until after model inference.</small>
-          </label>
-        ) : null}
-        {method === "form" ? (
-          <div className="form-grid">
-            <label className="field">
-              <span>TransactionID</span>
-              <input
-                type="number"
-                value={Number(payload.TransactionID)}
-                onChange={(event) =>
-                  setPayload({
-                    ...payload,
-                    TransactionID: Number(event.target.value),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>TransactionDT</span>
-              <input
-                type="number"
-                value={Number(payload.TransactionDT)}
-                onChange={(event) =>
-                  setPayload({
-                    ...payload,
-                    TransactionDT: Number(event.target.value),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Amount</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={Number(payload.TransactionAmt)}
-                onChange={(event) =>
-                  setPayload({
-                    ...payload,
-                    TransactionAmt: Number(event.target.value),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Product code</span>
-              <input
-                value={String(payload.ProductCD ?? "")}
-                onChange={(event) =>
-                  setPayload({ ...payload, ProductCD: event.target.value })
-                }
-              />
-            </label>
-          </div>
-        ) : null}
-        {method === "json" ? (
-          <label className="field">
-            <span>Complete transaction JSON</span>
-            <textarea
-              className="code-input"
-              rows={14}
-              value={jsonText}
-              onChange={(event) => setJsonText(event.target.value)}
-              spellCheck={false}
-            />
-            <small>`isFraud` is removed at the API boundary if supplied.</small>
-          </label>
-        ) : null}
-        {method === "file" ? (
-          <label className="drop-zone compact">
-            <Icon name="upload" />
-            <strong>{oneRowFile?.name ?? "Choose a one-row CSV"}</strong>
-            <span>Exactly one raw transaction</span>
-            <input
-              className="visually-hidden"
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) =>
-                setOneRowFile(event.target.files?.[0] ?? null)
-              }
-            />
-          </label>
-        ) : null}
+      <Panel title="Transaction JSON" eyebrow="One raw transaction">
+        <label className="field" htmlFor="transaction-json">
+          <span>JSON input</span>
+          <textarea
+            id="transaction-json"
+            aria-label="JSON input"
+            className="code-input"
+            rows={18}
+            value={jsonText}
+            onChange={(event) => setJsonText(event.target.value)}
+            spellCheck={false}
+          />
+          <small>
+            Include TransactionID and raw transaction fields. `isFraud` is
+            removed before inference if supplied.
+          </small>
+        </label>
         <div className="predict-footer">
           <span className="muted">
             {models.length} model{models.length === 1 ? "" : "s"} selected
@@ -316,7 +164,7 @@ function SingleTransactionPanel({ models }: { models: ModelIdentifier[] }) {
             disabled={loading || !models.length}
             onClick={() => void predict()}
           >
-            {loading ? "Scoring pipelines…" : "Analyse transaction"}
+            {loading ? "Running prediction…" : "Run prediction"}
           </button>
         </div>
         {error ? <ErrorState message={error} /> : null}
@@ -326,8 +174,8 @@ function SingleTransactionPanel({ models }: { models: ModelIdentifier[] }) {
           <PredictionResults prediction={prediction} />
         ) : (
           <EmptyState
-            title="Ready for analysis"
-            detail="Choose a real held-out transaction for the primary demonstration, then compare independent model risk scores and thresholds."
+            title="Ready to classify"
+            detail="Paste one raw transaction as JSON and run the selected trained model pipelines."
           />
         )}
       </div>
@@ -450,13 +298,8 @@ function RealtimeWorkspace({
   const active = ["RUNNING", "PAUSED", "LOADING", "STOPPING"].includes(
     status.status,
   );
-  const latestPrediction = completed.find((event) => event.results.length);
-  const riskScores = useMemo(
-    () =>
-      completed.flatMap((event) =>
-        event.results.map((result) => result.risk_score),
-      ),
-    [completed],
+  const latestPrediction = completed.find(
+    (event) => event.results.length && event.agreement,
   );
   return (
     <div className="realtime-workspace">
@@ -544,7 +387,7 @@ function RealtimeWorkspace({
         </div>
         {error ? <ErrorState message={error} /> : null}
       </Panel>
-      <div className="stats-grid stats-eight">
+      <div className="stats-grid stats-six">
         <StatCard
           label="Stream status"
           value={
@@ -582,26 +425,12 @@ function RealtimeWorkspace({
           value={`${status.current_throughput.toFixed(2)} TPS`}
         />
         <StatCard
-          label="Average latency"
-          value={formatLatency(status.average_latency_ms)}
-        />
-        <StatCard
-          label="Fraud alerts"
-          value={formatNumber(status.fraud_alerts)}
-          tone="high"
-        />
-        <StatCard
-          label="Suspicious value"
-          value={formatCurrency(status.suspicious_transaction_value)}
-          tone="review"
+          label="P95 latency"
+          value={formatLatency(status.p95_latency_ms)}
         />
       </div>
       <div className="dashboard-grid">
-        <Panel
-          title="Live transactions"
-          eyebrow="Completed in FIFO order"
-          className="span-two"
-        >
+        <Panel title="Live transactions" eyebrow="Completed in FIFO order">
           {completed.length ? (
             <LiveTable rows={completed} />
           ) : (
@@ -631,12 +460,6 @@ function RealtimeWorkspace({
               detail="Backlog appears here when arrivals exceed scoring throughput."
             />
           )}
-        </Panel>
-        <Panel
-          title="Risk distribution"
-          eyebrow={`${riskScores.length} model scores`}
-        >
-          <ScoreHistogram scores={riskScores} />
         </Panel>
       </div>
       {latestPrediction ? (
@@ -702,27 +525,6 @@ function LiveTable({ rows }: { rows: CompletedStreamEvent[] }) {
           })}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function ScoreHistogram({ scores }: { scores: number[] }) {
-  const bins = [0, 0, 0, 0, 0];
-  for (const score of scores) bins[Math.min(4, Math.floor(score * 5))] += 1;
-  const max = Math.max(1, ...bins);
-  return (
-    <div className="histogram">
-      {bins.map((count, index) => (
-        <div key={index}>
-          <span
-            className="histogram-bar"
-            style={{ height: `${Math.max(4, (count / max) * 100)}%` }}
-          />
-          <small>
-            {index * 20}–{(index + 1) * 20}
-          </small>
-        </div>
-      ))}
     </div>
   );
 }

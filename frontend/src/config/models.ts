@@ -23,7 +23,7 @@ export const MODEL_OPTIONS: Array<{
   { id: "neural_network.v2", name: "NeuralNetwork.V2", version: "V2" },
 ];
 
-export const DEFAULT_MODELS: ModelIdentifier[] = ["lightgbm.v2", "catboost.v2"];
+export const DEFAULT_MODELS: ModelIdentifier[] = [];
 
 export function modelName(identifier: string): string {
   return (

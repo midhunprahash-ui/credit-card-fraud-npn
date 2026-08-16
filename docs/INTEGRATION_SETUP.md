@@ -25,7 +25,7 @@ project configuration is in `supabase/config.toml`; version-controlled database
 changes are in `supabase/migrations/`.
 
 The hosted project is `credit-card-fraud-npn` (`dsiqmudbeaarrnxuaujf`) in the
-Tokyo region. The repository is linked to it, and all three committed migrations
+Tokyo region. The repository is linked to it, and all five committed migrations
 have been applied. Project references are identifiers, not credentials; no
 database password or API key is stored in Git.
 

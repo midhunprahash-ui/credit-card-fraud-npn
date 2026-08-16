@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 
 import pytest
@@ -56,3 +57,32 @@ def test_model_load_failure_does_not_break_unrelated_model() -> None:
     }
     assert states["catboost.v2"]["status"] == "failed"
     assert states["logistic_regression.v1"]["status"] == "loaded"
+
+
+def test_status_remains_responsive_while_native_model_is_loading() -> None:
+    registry = ModelRegistry.load(PROJECT_ROOT)
+    loading = threading.Event()
+    release = threading.Event()
+
+    def loader(spec):
+        loading.set()
+        assert release.wait(timeout=2)
+        return object()
+
+    manager = ModelManager(registry, loader=loader)
+    spec = registry.get("neural_network.v2")
+    worker = threading.Thread(target=manager.get, args=(spec,))
+    worker.start()
+    assert loading.wait(timeout=1)
+
+    try:
+        status = manager.status()
+        states = {
+            item["model_identifier"]: item for item in status["models"]
+        }
+        assert states["neural_network.v2"]["status"] == "loading"
+    finally:
+        release.set()
+        worker.join(timeout=2)
+
+    assert not worker.is_alive()

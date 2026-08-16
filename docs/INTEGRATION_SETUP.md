@@ -147,7 +147,9 @@ The `public/_headers` file adds baseline browser security headers. Update its
 ```bash
 .venv/bin/python -m pip install -r requirements-test.txt
 .venv/bin/python -m pytest -q
-.venv/bin/uvicorn api.main:app --reload --port 8000
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VECLIB_MAXIMUM_THREADS=1 PYTHONPATH=. \
+  .venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
 
 cd frontend
 npm ci
@@ -155,6 +157,12 @@ npm run type-check
 npm run build
 npm run dev
 ```
+
+Do not use Uvicorn `--reload` for full-model inference. PyTorch, CatBoost and
+LightGBM initialize native CPU worker pools; reloading a process that has used
+several runtimes can stall checkpoint loading. `MODEL_CPU_THREADS=1` provides a
+code-level PyTorch limit, while the four process environment variables apply
+the limit before native libraries initialize.
 
 The production build contains the focused CYPHER prediction interface with
 Single JSON, CSV Upload, and Real-time modes. No model is selected by default.

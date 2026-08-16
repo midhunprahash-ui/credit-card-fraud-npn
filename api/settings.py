@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         "config/deployment_artifacts.json"
     )
     model_cache_size: int = Field(default=2, ge=1, le=8)
+    model_cpu_threads: int = Field(default=1, ge=1, le=16)
     batch_max_file_bytes: int = Field(default=5_000_000, ge=1)
     batch_max_rows: int = Field(default=1_000, ge=1, le=10_000)
     batch_chunk_size: int = Field(default=100, ge=1, le=1_000)

@@ -44,9 +44,10 @@ class RawInputContract:
         for required in (self.identifier_column, TIME_COLUMN):
             if required not in cleaned:
                 raise ValueError(f"Missing required field: {required}")
-        for column in self.columns:
-            if column not in cleaned:
-                cleaned[column] = np.nan
+        # Add every absent optional field and restore training-time order in one
+        # allocation. Repeated column insertion fragments wide IEEE-CIS frames
+        # and emits hundreds of pandas PerformanceWarnings for sparse JSON.
+        cleaned = cleaned.reindex(columns=self.columns)
 
         identifiers = pd.to_numeric(cleaned[self.identifier_column], errors="coerce")
         if identifiers.isna().any() or (~np.isfinite(identifiers)).any():

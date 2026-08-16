@@ -45,6 +45,11 @@ Start FastAPI with the same command used by Render:
 .venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
+Sparse JSON is aligned to the complete 433-column raw contract with one pandas
+`reindex` operation. This restores absent optional fields as null and preserves
+training-time column order without repeatedly inserting columns or fragmenting
+the DataFrame.
+
 Open `http://localhost:8000/docs` for the generated OpenAPI interface.
 
 ## Endpoints

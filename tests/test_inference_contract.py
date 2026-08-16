@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -70,6 +71,20 @@ def test_raw_contract_drops_label_and_null_fills_optional_fields(tmp_path: Path)
 
     assert list(aligned) == list(contract.columns)
     assert "isFraud" not in aligned
+    assert pd.isna(aligned.iloc[0]["DeviceInfo"])
+
+
+def test_wide_raw_contract_aligns_sparse_json_without_fragmentation_warning() -> None:
+    contract = RawInputContract.load(PROJECT_ROOT / "config/raw_input_schema.json")
+    sparse = pd.DataFrame([{"TransactionID": 3_663_549, "TransactionDT": 1}])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", pd.errors.PerformanceWarning)
+        aligned = contract.align(sparse)
+
+    assert tuple(aligned.columns) == contract.columns
+    assert aligned.shape == (1, 433)
+    assert aligned.iloc[0]["TransactionID"] == 3_663_549
     assert pd.isna(aligned.iloc[0]["DeviceInfo"])
 
 

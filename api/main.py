@@ -96,8 +96,15 @@ def create_app(
     def model_loader(spec):
         if artifact_store is not None:
             artifact_store.ensure_model(spec)
-            return load_model_adapter(spec, verify_manifest=False)
-        return load_model_adapter(spec)
+            return load_model_adapter(
+                spec,
+                verify_manifest=False,
+                model_cpu_threads=active_settings.model_cpu_threads,
+            )
+        return load_model_adapter(
+            spec,
+            model_cpu_threads=active_settings.model_cpu_threads,
+        )
 
     model_manager = ModelManager(
         registry,

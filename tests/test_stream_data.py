@@ -114,3 +114,17 @@ def test_kaggle_sample_joins_identity_and_has_no_ground_truth(
     assert "id_01" not in rows[0]["transaction_payload"]
     assert all("isFraud" not in row["transaction_payload"] for row in rows)
     assert all("actual_label" not in row for row in rows)
+
+    output = tmp_path / "kaggle_sample.csv"
+    upload_kaggle_inference_sample.export_csv(rows, output)
+    exported = pd.read_csv(output)
+
+    assert list(exported.columns) == [
+        "TransactionID",
+        "TransactionDT",
+        "TransactionAmt",
+        "id_01",
+    ]
+    assert exported["TransactionID"].tolist() == [21, 20]
+    assert pd.isna(exported.loc[0, "id_01"])
+    assert exported.loc[1, "id_01"] == 3.5

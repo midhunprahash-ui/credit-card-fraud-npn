@@ -30,6 +30,17 @@ Validate locally:
 .venv/bin/python scripts/upload_kaggle_inference_sample.py --dry-run
 ```
 
+Create the ready-to-upload 100-row CSV:
+
+```bash
+.venv/bin/python scripts/upload_kaggle_inference_sample.py \
+  --csv-output data/samples/kaggle_inference_sample_100.csv
+```
+
+The exported CSV contains all 433 raw model-input columns in schema order.
+Missing values are blank, and `isFraud` is not included. It can be uploaded
+directly in the application's CSV Upload mode.
+
 Upload with server-side Supabase settings in the local environment:
 
 ```bash

@@ -15,6 +15,7 @@ guide, the checked-in configuration, and the code in that order.
 | [Simplified application guide](SIMPLIFIED_APPLICATION_GUIDE.md) | Current one-page CYPHER workflow and output contract |
 | [Integration setup](INTEGRATION_SETUP.md) | Supabase, Render, R2, Cloudflare Pages, local setup, and release commands |
 | [Deployment architecture](DEPLOYMENT_ARCHITECTURE.md) | Current runtime boundaries and data flow |
+| [Developer-agent handoff prompt](DEVELOPER_AGENT_HANDOFF_PROMPT.md) | Copy-paste onboarding prompt for another developer and coding agent |
 
 ## Current ML and data references
 

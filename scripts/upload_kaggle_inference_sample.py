@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
         help="Write an idempotent SQL upload file instead of contacting Supabase.",
     )
     parser.add_argument(
+        "--csv-output",
+        type=Path,
+        help="Write an upload-ready CSV with every raw model-input column.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate and summarize locally without contacting Supabase.",
@@ -130,6 +135,23 @@ def prepare_rows(
     return rows
 
 
+def export_csv(rows: list[dict[str, Any]], output: Path) -> None:
+    """Write sparse stored payloads as a complete raw-input CSV."""
+    columns = raw_columns()
+    frame = pd.DataFrame(
+        [
+            {
+                column: row["transaction_payload"].get(column)
+                for column in columns
+            }
+            for row in rows
+        ],
+        columns=columns,
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(output, index=False)
+
+
 async def upload(
     client: SupabaseRestClient,
     rows: list[dict[str, Any]],
@@ -188,6 +210,14 @@ async def upload(
 def summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     distinct_fields = {
         key for row in rows for key in row["transaction_payload"].keys()
+    }
+    return {
+        "name": DATASET_NAME,
+        "row_count": len(rows),
+        "labels_available": False,
+        "distinct_payload_fields": len(distinct_fields),
+        "first_transaction_id": rows[0]["transaction_id"],
+        "last_transaction_id": rows[-1]["transaction_id"],
     }
 
 
@@ -249,14 +279,6 @@ def build_upload_sql(rows: list[dict[str, Any]]) -> str:
             "",
         ]
     )
-    return {
-        "name": DATASET_NAME,
-        "row_count": len(rows),
-        "labels_available": False,
-        "distinct_payload_fields": len(distinct_fields),
-        "first_transaction_id": rows[0]["transaction_id"],
-        "last_transaction_id": rows[-1]["transaction_id"],
-    }
 
 
 def _is_missing(value: Any) -> bool:
@@ -279,6 +301,9 @@ async def run(args: argparse.Namespace) -> None:
         row_limit=args.row_limit,
     )
     print(json.dumps(summary(rows), indent=2))
+    if args.csv_output is not None:
+        export_csv(rows, args.csv_output)
+        return
     if args.dry_run:
         return
     if args.sql_output is not None:

@@ -87,6 +87,8 @@ export type ExplanationResponse = {
   transaction_id: number;
   model_identifier: ModelIdentifier;
   method: "local_feature_contribution";
+  explanation_technique: "shap" | "feature_ablation";
+  explanation_technique_label: string;
   important_features: Array<{
     feature: string;
     contribution: number;

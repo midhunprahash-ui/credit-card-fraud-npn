@@ -954,6 +954,12 @@ tbody tr:hover {
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
+.explanation-technique {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
 .feature-driver-table,
 .input-values-scroll {
   background: var(--surface);

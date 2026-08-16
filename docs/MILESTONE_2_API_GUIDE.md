@@ -107,10 +107,12 @@ clients should use the boolean `decision` as authoritative.
 
 `POST /explain` accepts one model identifier and one raw transaction. It returns
 up to five features, their signed contribution or sensitivity, and a direction
-of `toward_fraud` or `toward_not_fraud`. LightGBM and CatBoost use native
-per-row contribution support. Logistic Regression and Neural Network use
-leave-one-feature-out score sensitivity. The result explains model behaviour,
-not causation.
+of `toward_fraud` or `toward_not_fraud`. LightGBM and CatBoost use native SHAP
+feature contributions. Logistic Regression and Neural Network use
+leave-one-feature-out score sensitivity, which is explicitly labelled as not
+SHAP. The API returns the explanation technique and its display label so the UI
+does not misidentify the method. The result explains model behaviour, not
+causation.
 
 Explanations are intentionally requested only after the user opens a result
 row. They are not part of the normal `/predict`, batch, or FIFO hot path.

@@ -25,7 +25,7 @@ export function AppShell({
           />
           <div>
             <strong>{apiOnline ? "API connected" : "API unavailable"}</strong>
-            <span>Cloud API · Production</span>
+            <span>Render . Cloudflare . R2 . Supabase | Production</span>
           </div>
         </div>
       </header>

@@ -26,6 +26,7 @@ class ExplanationRequest(BaseModel):
 
     model_identifier: str
     transaction: dict[str, Any]
+    decision: bool | None = None
 
 
 class ExplanationResponse(BaseModel):
@@ -35,6 +36,8 @@ class ExplanationResponse(BaseModel):
     explanation_technique: Literal["shap", "feature_ablation"]
     explanation_technique_label: str
     important_features: list[dict[str, Any]]
+    behavioral_explanation: str | None = None
+    behavioral_explanation_source: Literal["openrouter", "template"] | None = None
 
 
 class ModelPredictionResponse(BaseModel):

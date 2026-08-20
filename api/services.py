@@ -184,6 +184,7 @@ class PredictionService:
         self,
         transaction: dict[str, Any],
         model_identifier: str,
+        decision: bool | None = None,
     ) -> dict[str, Any]:
         """Create an on-demand, transaction-level feature sensitivity result."""
         try:
@@ -197,7 +198,21 @@ class PredictionService:
                 behavioral_reference=reference,
             )
             adapter = self.model_manager.get(spec)
-            important_features = adapter.explain_one(model_input)
+            ranked_features = adapter.explain_one(model_input, top_k=10_000)
+            explanation_decision = (
+                decision
+                if decision is not None
+                else adapter.predict(model_input)[0].decision
+            )
+            important_features = ranked_features[:5]
+            from .behavioral_explanations import generate_behavioral_explanation
+
+            behavioral_explanation, behavioral_explanation_source = (
+                generate_behavioral_explanation(
+                    ranked_features,
+                    decision=explanation_decision,
+                )
+            )
         except ApiError:
             raise
         except (ModelLoadError, ModelPredictionError) as error:
@@ -230,6 +245,8 @@ class PredictionService:
                 else "Feature-removal score sensitivity (not SHAP)"
             ),
             "important_features": important_features,
+            "behavioral_explanation": behavioral_explanation,
+            "behavioral_explanation_source": behavioral_explanation_source,
         }
 
 

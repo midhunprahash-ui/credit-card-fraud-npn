@@ -20,6 +20,9 @@ vi.mock("../api/client", () => ({
           direction: "toward_fraud",
         },
       ],
+      behavioral_explanation:
+        "It is flagged as fraud because previous transaction frequency increased the model's fraud score.",
+      behavioral_explanation_source: "template",
     }),
   },
 }));
@@ -106,6 +109,9 @@ describe("PredictionResults", () => {
     expect(await screen.findByText("Toward fraud")).toBeVisible();
     expect(
       screen.getByText("Explanation method: SHAP feature contributions"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/previous transaction frequency increased/),
     ).toBeVisible();
   });
 });

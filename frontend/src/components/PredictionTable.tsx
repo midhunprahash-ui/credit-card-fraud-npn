@@ -21,6 +21,7 @@ type RowDetail = {
   loading: boolean;
   input: Record<string, unknown> | null;
   explanationTechniqueLabel: string | null;
+  behavioralExplanation: string | null;
   features: Array<{
     feature: string;
     contribution: number;
@@ -48,6 +49,7 @@ export function PredictionTable({
       loading: true,
       input: row.input ?? null,
       explanationTechniqueLabel: null,
+      behavioralExplanation: null,
       features: [],
       error: null,
     });
@@ -57,7 +59,11 @@ export function PredictionTable({
       setDetail((current) =>
         current?.key === row.key ? { ...current, input } : current,
       );
-      const explanation = await api.explain(input, row.modelIdentifier);
+      const explanation = await api.explain(
+        input,
+        row.modelIdentifier,
+        row.decision,
+      );
       setDetail((current) =>
         current?.key === row.key
           ? {
@@ -66,6 +72,7 @@ export function PredictionTable({
               input,
               explanationTechniqueLabel:
                 explanation.explanation_technique_label,
+              behavioralExplanation: explanation.behavioral_explanation,
               features: explanation.important_features,
             }
           : current,
@@ -180,9 +187,17 @@ function PredictionDetail({ detail }: { detail: RowDetail | null }) {
       <section>
         <h4>Strongest decision features</h4>
         {detail.explanationTechniqueLabel ? (
-          <p className="explanation-technique">
-            Explanation method: {detail.explanationTechniqueLabel}
-          </p>
+          <>
+            <p className="explanation-technique">
+              Explanation method: {detail.explanationTechniqueLabel}
+            </p>
+            {detail.behavioralExplanation ? (
+              <div className="behavioral-explanation">
+                <strong>Behavioral explanation</strong>
+                <p>{detail.behavioralExplanation}</p>
+              </div>
+            ) : null}
+          </>
         ) : null}
         {detail.loading ? (
           <p className="muted">Calculating local explanation…</p>

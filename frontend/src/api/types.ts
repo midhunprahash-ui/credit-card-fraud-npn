@@ -94,6 +94,8 @@ export type ExplanationResponse = {
     contribution: number;
     direction: "toward_fraud" | "toward_not_fraud";
   }>;
+  behavioral_explanation: string | null;
+  behavioral_explanation_source: "openrouter" | "template" | null;
 };
 
 export type BatchResponse = {

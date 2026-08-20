@@ -960,6 +960,24 @@ tbody tr:hover {
   font-size: 0.72rem;
   line-height: 1.4;
 }
+.behavioral-explanation {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--text);
+  background: var(--surface);
+}
+.behavioral-explanation strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.behavioral-explanation p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
 .feature-driver-table,
 .input-values-scroll {
   background: var(--surface);

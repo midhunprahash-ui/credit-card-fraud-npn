@@ -64,7 +64,10 @@ class FakePredictionService:
         }
 
     def explain(
-        self, transaction: dict[str, Any], model_identifier: str
+        self,
+        transaction: dict[str, Any],
+        model_identifier: str,
+        decision: bool | None = None,
     ) -> dict[str, Any]:
         return {
             "transaction_id": int(transaction["TransactionID"]),

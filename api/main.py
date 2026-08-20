@@ -352,6 +352,7 @@ def create_app(
             active_prediction_service.explain,
             request.transaction,
             request.model_identifier,
+            request.decision,
         )
 
     @app.post("/predict/file", response_model=PredictionResponse)

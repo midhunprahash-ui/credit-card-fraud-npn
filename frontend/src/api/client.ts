@@ -87,6 +87,7 @@ export const api = {
   explain: (
     transaction: Record<string, unknown>,
     modelIdentifier: ModelIdentifier,
+    decision?: boolean,
   ) =>
     request<ExplanationResponse>("/explain", {
       method: "POST",
@@ -94,6 +95,7 @@ export const api = {
       body: JSON.stringify({
         transaction,
         model_identifier: modelIdentifier,
+        decision,
       }),
     }),
   predictFile: async (file: File, modelIdentifiers: ModelIdentifier[]) => {

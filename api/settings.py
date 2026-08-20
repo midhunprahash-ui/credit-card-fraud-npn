@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     r2_secret_access_key: SecretStr | None = None
     r2_bucket_name: str | None = None
 
+    openrouter_api_key: SecretStr | None = None
+    openrouter_model: str = "openrouter/free"
+    openrouter_timeout_seconds: float = Field(default=30.0, ge=1.0, le=30.0)
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

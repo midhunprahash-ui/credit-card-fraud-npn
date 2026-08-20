@@ -53,6 +53,7 @@ class ModelPredictionResponse(BaseModel):
     champion: bool
     processing_status: str
     important_features: list[dict[str, Any]] | None = None
+    history_prediction_id: str | None = None
 
 
 class AgreementResponse(BaseModel):
@@ -67,6 +68,8 @@ class PredictionResponse(BaseModel):
     input_completeness: float
     results: list[ModelPredictionResponse]
     agreement: AgreementResponse
+    analysis_run_id: str | None = None
+    history_status: Literal["stored", "unavailable"] = "unavailable"
 
 
 class InvalidBatchRow(BaseModel):
@@ -92,6 +95,8 @@ class BatchPredictionResponse(BaseModel):
     results: list[dict[str, Any]]
     invalid_row_report: list[InvalidBatchRow]
     processing_status: str
+    analysis_run_id: str | None = None
+    history_status: Literal["stored", "unavailable"] = "unavailable"
 
 
 class ErrorBody(BaseModel):

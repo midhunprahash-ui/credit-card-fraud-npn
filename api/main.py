@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, File, Form, Path as ApiPath, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, Path as ApiPath, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -27,6 +27,7 @@ from src.fraud_pipeline.model_manager import ModelManager
 from src.fraud_pipeline.registry import ModelRegistry
 
 from .catalog import PROJECT_ROOT, VersionName, load_model_catalog
+from .analysis_history import AnalysisHistoryRepository, AnalysisMode
 from .demo_repository import (
     DemoTransactionRepository,
     SupabaseDemoTransactionRepository,
@@ -72,6 +73,7 @@ def create_app(
     demo_repository: DemoTransactionRepository | Any | None = None,
     stream_controller: StreamController | Any | None = None,
     alert_repository: SupabaseStreamRepository | Any | None = None,
+    history_repository: AnalysisHistoryRepository | Any | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     configure_logging(active_settings.log_level)
@@ -137,11 +139,19 @@ def create_app(
     supabase_rest_client: SupabaseRestClient | None = None
     active_stream_controller = stream_controller
     active_alert_repository = alert_repository
+    active_history_repository = history_repository
     if active_settings.supabase_configured and (
-        active_stream_controller is None or active_alert_repository is None
+        active_stream_controller is None
+        or active_alert_repository is None
+        or active_history_repository is None
     ):
         supabase_rest_client = SupabaseRestClient(active_settings)
-        repository = SupabaseStreamRepository(supabase_rest_client)
+        if active_history_repository is None:
+            active_history_repository = AnalysisHistoryRepository(supabase_rest_client)
+        repository = SupabaseStreamRepository(
+            supabase_rest_client,
+            history_repository=active_history_repository,
+        )
         if active_stream_controller is None:
             active_stream_controller = StreamController(
                 repository,
@@ -171,6 +181,7 @@ def create_app(
     app.state.metrics = metrics
     app.state.stream_controller = active_stream_controller
     app.state.alert_repository = active_alert_repository
+    app.state.history_repository = active_history_repository
     if supabase_rest_client is not None:
         app.router.add_event_handler("shutdown", supabase_rest_client.close)
     app.add_middleware(
@@ -178,7 +189,12 @@ def create_app(
         allow_origins=active_settings.allowed_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Request-ID",
+            "X-Client-ID",
+        ],
         expose_headers=["X-Request-ID"],
     )
 
@@ -339,12 +355,39 @@ def create_app(
         }
 
     @app.post("/predict", response_model=PredictionResponse)
-    async def predict(request: PredictionRequest) -> dict[str, Any]:
-        return await run_in_threadpool(
+    async def predict(
+        request: PredictionRequest,
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
+        response = await run_in_threadpool(
             active_prediction_service.predict,
             request.transaction,
             request.model_identifiers,
         )
+        if active_history_repository is None:
+            return {**response, "history_status": "unavailable"}
+        owner = _require_history_client(client_id)
+        try:
+            stored = await active_history_repository.persist_single(
+                client_id=owner,
+                mode="single",
+                selected_models=request.model_identifiers,
+                input_payload=request.transaction,
+                prediction=response,
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503,
+                "analysis_history_unavailable",
+                "The prediction was calculated but could not be saved to history",
+            ) from error
+        for result in response["results"]:
+            result["history_prediction_id"] = stored.get(result["model_identifier"])
+        return {
+            **response,
+            "analysis_run_id": stored["run_id"],
+            "history_status": "stored",
+        }
 
     @app.post("/explain", response_model=ExplanationResponse)
     async def explain(request: ExplanationRequest) -> dict[str, Any]:
@@ -376,6 +419,7 @@ def create_app(
         file: UploadFile = File(...),
         models: str = Form(...),
         response_format: str = Form(default="json", pattern="^(json|zip)$"),
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
     ) -> dict[str, Any] | Response:
         model_identifiers = _validated_form_models(models, registry)
         content = await file.read(active_settings.batch_max_file_bytes + 1)
@@ -387,6 +431,34 @@ def create_app(
             content=content,
             model_identifiers=model_identifiers,
         )
+        if active_history_repository is not None:
+            owner = _require_history_client(client_id)
+            try:
+                analysis_run_id, prediction_ids = (
+                    await active_history_repository.persist_batch(
+                        client_id=owner,
+                        selected_models=model_identifiers,
+                        source_name=file.filename,
+                        report=report,
+                    )
+                )
+            except SupabaseRepositoryError as error:
+                raise ApiError(
+                    503,
+                    "analysis_history_unavailable",
+                    "The CSV was analysed but could not be saved to history",
+                ) from error
+            for ordinal, row in enumerate(report["results"]):
+                source_ordinal = int(row.get("history_ordinal", ordinal))
+                row["history_prediction_ids"] = {
+                    identifier: prediction_ids[(source_ordinal, identifier)]
+                    for identifier in model_identifiers
+                    if (source_ordinal, identifier) in prediction_ids
+                }
+            report["analysis_run_id"] = analysis_run_id
+            report["history_status"] = "stored"
+        else:
+            report["history_status"] = "unavailable"
         if response_format == "zip":
             content = await run_in_threadpool(build_batch_download, report)
             return Response(
@@ -416,13 +488,38 @@ def create_app(
         return {"datasets": await controller.list_datasets()}
 
     @app.post("/stream/start")
-    async def stream_start(request: StreamStartRequest) -> dict[str, Any]:
+    async def stream_start(
+        request: StreamStartRequest,
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
         controller = _require_stream_controller(active_stream_controller)
-        return await controller.start(
+        status = await controller.start(
             dataset_id=request.dataset_id,
             selected_models=request.selected_models,
             transactions_per_second=request.transactions_per_second,
         )
+        if active_history_repository is None:
+            return status
+        owner = _require_history_client(client_id)
+        try:
+            analysis_run_id = await active_history_repository.create_realtime_run(
+                client_id=owner,
+                stream_run_id=str(status["stream_run_id"]),
+                selected_models=request.selected_models,
+                dataset_id=request.dataset_id,
+            )
+        except SupabaseRepositoryError as error:
+            await controller.stop()
+            raise ApiError(
+                503,
+                "analysis_history_unavailable",
+                "The real-time run could not be linked to analysis history",
+            ) from error
+        return {
+            **status,
+            "analysis_run_id": analysis_run_id,
+            "history_status": "stored",
+        }
 
     @app.post("/stream/pause")
     async def stream_pause() -> dict[str, Any]:
@@ -437,8 +534,29 @@ def create_app(
         return await _require_stream_controller(active_stream_controller).stop()
 
     @app.post("/stream/restart")
-    async def stream_restart() -> dict[str, Any]:
-        return await _require_stream_controller(active_stream_controller).restart()
+    async def stream_restart(
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
+        controller = _require_stream_controller(active_stream_controller)
+        status = await controller.restart()
+        if active_history_repository is None:
+            return status
+        owner = _require_history_client(client_id)
+        try:
+            analysis_run_id = await active_history_repository.create_realtime_run(
+                client_id=owner,
+                stream_run_id=str(status["stream_run_id"]),
+                selected_models=list(status["selected_models"]),
+                dataset_id=str(status["dataset_id"]),
+            )
+        except SupabaseRepositoryError as error:
+            await controller.stop()
+            raise ApiError(
+                503,
+                "analysis_history_unavailable",
+                "The restarted run could not be linked to analysis history",
+            ) from error
+        return {**status, "analysis_run_id": analysis_run_id, "history_status": "stored"}
 
     @app.get("/stream/status")
     async def stream_status() -> dict[str, Any]:
@@ -464,6 +582,86 @@ def create_app(
                 "X-Accel-Buffering": "no",
             },
         )
+
+    @app.get("/analysis-history")
+    async def analysis_history(
+        mode: AnalysisMode = Query(),
+        limit: int = Query(default=20, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
+        repository = _require_history_repository(active_history_repository)
+        try:
+            runs = await repository.list_runs(
+                client_id=_require_history_client(client_id),
+                mode=mode,
+                limit=limit,
+                offset=offset,
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "analysis_history_unavailable", "Analysis history is unavailable"
+            ) from error
+        return {"runs": runs, "limit": limit, "offset": offset}
+
+    @app.get("/analysis-history/export")
+    async def export_analysis_history(
+        mode: AnalysisMode = Query(),
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> Response:
+        repository = _require_history_repository(active_history_repository)
+        try:
+            content = await repository.export_csv(
+                client_id=_require_history_client(client_id), mode=mode
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "analysis_history_unavailable", "Analysis history export is unavailable"
+            ) from error
+        return Response(
+            content=content,
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{mode}_analysis_history.csv"'
+            },
+        )
+
+    @app.get("/analysis-history/{run_id}")
+    async def analysis_history_detail(
+        run_id: uuid.UUID,
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
+        repository = _require_history_repository(active_history_repository)
+        try:
+            detail = await repository.get_run(
+                client_id=_require_history_client(client_id), run_id=str(run_id)
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503, "analysis_history_unavailable", "Analysis history is unavailable"
+            ) from error
+        if detail is None:
+            raise ApiError(404, "analysis_run_not_found", "Analysis history run was not found")
+        return detail
+
+    @app.post("/analysis-history/predictions/{prediction_id}/explain")
+    async def explain_history_prediction(
+        prediction_id: uuid.UUID,
+        client_id: uuid.UUID | None = Header(default=None, alias="X-Client-ID"),
+    ) -> dict[str, Any]:
+        repository = _require_history_repository(active_history_repository)
+        try:
+            return await repository.explain_prediction(
+                client_id=_require_history_client(client_id),
+                prediction_id=str(prediction_id),
+                prediction_service=active_prediction_service,
+            )
+        except SupabaseRepositoryError as error:
+            raise ApiError(
+                503,
+                "analysis_history_unavailable",
+                "The explanation could not be saved to history",
+            ) from error
 
     @app.get("/alerts")
     async def alerts(
@@ -564,6 +762,26 @@ def _require_alert_repository(repository: SupabaseStreamRepository | Any | None)
             "Alert history requires server-side Supabase credentials",
         )
     return repository
+
+
+def _require_history_repository(repository: AnalysisHistoryRepository | Any | None):
+    if repository is None:
+        raise ApiError(
+            503,
+            "analysis_history_unavailable",
+            "Analysis history requires server-side Supabase credentials",
+        )
+    return repository
+
+
+def _require_history_client(client_id: uuid.UUID | None) -> uuid.UUID:
+    if client_id is None:
+        raise ApiError(
+            422,
+            "missing_history_client",
+            "The browser history identifier is required",
+        )
+    return client_id
 
 
 def _format_sse(event_type: str, data: dict[str, Any]) -> str:

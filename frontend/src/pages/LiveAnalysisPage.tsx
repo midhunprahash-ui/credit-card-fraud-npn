@@ -11,6 +11,7 @@ import type {
   VersionName,
 } from "../api/types";
 import { BatchPanel } from "../components/BatchPanel";
+import { AnalysisHistory } from "../components/AnalysisHistory";
 import { FilterBar } from "../components/FilterBar";
 import { Icon } from "../components/Icon";
 import { PredictionTable } from "../components/PredictionTable";
@@ -24,6 +25,11 @@ import {
   StatusBadge,
 } from "../components/ui";
 import { formatLatency, formatNumber } from "../utils/format";
+import {
+  publishHistoryChange,
+  readSessionState,
+  writeSessionState,
+} from "../utils/storage";
 
 type Filters = {
   versions: VersionName[];
@@ -49,9 +55,12 @@ export function LiveAnalysisPage({
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
 }) {
-  const [inputMode, setInputMode] = useState<InputMode>("json");
+  const [inputMode, setInputMode] = useState<InputMode>(() =>
+    readSessionState<InputMode>("input-mode", "json"),
+  );
   const [streamStatus, setStreamStatus] = useState<string>("IDLE");
   const locked = ["LOADING", "RUNNING", "STOPPING"].includes(streamStatus);
+  useEffect(() => writeSessionState("input-mode", inputMode), [inputMode]);
   return (
     <>
       <PageHeader
@@ -108,19 +117,45 @@ export function LiveAnalysisPage({
 }
 
 function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
-  const [jsonText, setJsonText] = useState("{}");
+  const saved = useRef(
+    readSessionState<{
+      jsonText: string;
+      selectedTransactionId: string;
+      prediction: PredictionResponse | null;
+      predictionInput: Record<string, unknown>;
+    }>("single", {
+      jsonText: "{}",
+      selectedTransactionId: "",
+      prediction: null,
+      predictionInput: {},
+    }),
+  );
+  const [jsonText, setJsonText] = useState(saved.current.jsonText);
   const [demoTransactions, setDemoTransactions] = useState<
     Array<{ transaction_id: number }>
   >([]);
-  const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  const [selectedTransactionId, setSelectedTransactionId] = useState(
+    saved.current.selectedTransactionId,
+  );
   const [loadingTransaction, setLoadingTransaction] = useState(true);
   const loadRequestId = useRef(0);
-  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  const [prediction, setPrediction] = useState<PredictionResponse | null>(
+    saved.current.prediction,
+  );
   const [predictionInput, setPredictionInput] = useState<
     Record<string, unknown>
-  >({});
+  >(saved.current.predictionInput);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    writeSessionState("single", {
+      jsonText,
+      selectedTransactionId,
+      prediction,
+      predictionInput,
+    });
+  }, [jsonText, prediction, predictionInput, selectedTransactionId]);
 
   const loadTransaction = useCallback(async (transactionId: number) => {
     const requestId = ++loadRequestId.current;
@@ -148,6 +183,10 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
       .then((response) => {
         if (cancelled) return;
         setDemoTransactions(response.transactions);
+        if (saved.current.selectedTransactionId && saved.current.jsonText) {
+          setLoadingTransaction(false);
+          return;
+        }
         const first = response.transactions[0];
         if (first) return loadTransaction(first.transaction_id);
         setLoadingTransaction(false);
@@ -184,6 +223,7 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
       const displayInput = { ...input };
       delete displayInput.isFraud;
       setPredictionInput(displayInput);
+      publishHistoryChange();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Prediction failed");
     } finally {
@@ -192,72 +232,78 @@ function SingleJsonPanel({ models }: { models: ModelIdentifier[] }) {
   }
 
   return (
-    <div className="single-layout">
-      <Panel title="Transaction JSON" eyebrow="One raw transaction">
-        <label className="field">
-          <span>Unlabelled Kaggle test transaction</span>
-          <select
-            value={selectedTransactionId}
-            disabled={loadingTransaction || !demoTransactions.length}
-            onChange={(event) =>
-              void loadTransaction(Number(event.target.value))
-            }
-          >
-            {demoTransactions.map((transaction) => (
-              <option
-                key={transaction.transaction_id}
-                value={transaction.transaction_id}
-              >
-                TransactionID {transaction.transaction_id}
-              </option>
-            ))}
-          </select>
-          <small>
-            Loads the complete transaction and matching identity payload. Ground
-            truth is not available for Kaggle test rows.
-          </small>
-        </label>
-        <label className="field" htmlFor="transaction-json">
-          <span>JSON input</span>
-          <textarea
-            id="transaction-json"
-            aria-label="JSON input"
-            className="code-input"
-            rows={18}
-            value={jsonText}
-            onChange={(event) => setJsonText(event.target.value)}
-            spellCheck={false}
-          />
-          <small>
-            Include TransactionID and raw transaction fields. `isFraud` is
-            removed before inference if supplied.
-          </small>
-        </label>
-        <div className="predict-footer">
-          <span className="muted">
-            {models.length} model{models.length === 1 ? "" : "s"} selected
-          </span>
-          <button
-            className="button button-primary"
-            disabled={loading || loadingTransaction || !models.length}
-            onClick={() => void predict()}
-          >
-            {loading ? "Running prediction…" : "Run prediction"}
-          </button>
+    <>
+      <div className="single-layout">
+        <Panel title="Transaction JSON" eyebrow="One raw transaction">
+          <label className="field">
+            <span>Unlabelled Kaggle test transaction</span>
+            <select
+              value={selectedTransactionId}
+              disabled={loadingTransaction || !demoTransactions.length}
+              onChange={(event) =>
+                void loadTransaction(Number(event.target.value))
+              }
+            >
+              {demoTransactions.map((transaction) => (
+                <option
+                  key={transaction.transaction_id}
+                  value={transaction.transaction_id}
+                >
+                  TransactionID {transaction.transaction_id}
+                </option>
+              ))}
+            </select>
+            <small>
+              Loads the complete transaction and matching identity payload.
+              Ground truth is not available for Kaggle test rows.
+            </small>
+          </label>
+          <label className="field" htmlFor="transaction-json">
+            <span>JSON input</span>
+            <textarea
+              id="transaction-json"
+              aria-label="JSON input"
+              className="code-input"
+              rows={18}
+              value={jsonText}
+              onChange={(event) => setJsonText(event.target.value)}
+              spellCheck={false}
+            />
+            <small>
+              Include TransactionID and raw transaction fields. `isFraud` is
+              removed before inference if supplied.
+            </small>
+          </label>
+          <div className="predict-footer">
+            <span className="muted">
+              {models.length} model{models.length === 1 ? "" : "s"} selected
+            </span>
+            <button
+              className="button button-primary"
+              disabled={loading || loadingTransaction || !models.length}
+              onClick={() => void predict()}
+            >
+              {loading ? "Running prediction…" : "Run prediction"}
+            </button>
+          </div>
+          {error ? <ErrorState message={error} /> : null}
+        </Panel>
+        <div>
+          {prediction ? (
+            <PredictionResults
+              prediction={prediction}
+              input={predictionInput}
+            />
+          ) : (
+            <EmptyState
+              title="Ready to classify"
+              detail="Paste one raw transaction as JSON and run the selected trained model pipelines."
+            />
+          )}
         </div>
-        {error ? <ErrorState message={error} /> : null}
-      </Panel>
-      <div>
-        {prediction ? (
-          <PredictionResults prediction={prediction} input={predictionInput} />
-        ) : (
-          <EmptyState
-            title="Ready to classify"
-            detail="Paste one raw transaction as JSON and run the selected trained model pipelines."
-          />
-        )}
       </div>
-    </div>
+      <AnalysisHistory mode="single" />
+    </>
   );
 }
 
@@ -291,12 +337,21 @@ function RealtimeWorkspace({
   models: ModelIdentifier[];
   onStatusChange: (status: string) => void;
 }) {
+  const saved = useRef(
+    readSessionState<{
+      datasetId: string;
+      rate: number;
+      completed: CompletedStreamEvent[];
+    }>("realtime", { datasetId: "", rate: 1, completed: [] }),
+  );
   const [datasets, setDatasets] = useState<StreamDataset[]>([]);
-  const [datasetId, setDatasetId] = useState("");
-  const [rate, setRate] = useState(1);
+  const [datasetId, setDatasetId] = useState(saved.current.datasetId);
+  const [rate, setRate] = useState(saved.current.rate);
   const [status, setStatus] = useState<StreamStatus>(EMPTY_STREAM);
   const [queue, setQueue] = useState<QueueStreamEvent[]>([]);
-  const [completed, setCompleted] = useState<CompletedStreamEvent[]>([]);
+  const [completed, setCompleted] = useState<CompletedStreamEvent[]>(
+    saved.current.completed,
+  );
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const handleMessage = useCallback((message: StreamMessage) => {
@@ -319,7 +374,11 @@ function RealtimeWorkspace({
       "status" in message.data
     )
       setStatus(message.data as StreamStatus);
+    if (message.type === "stream_finished") publishHistoryChange();
   }, []);
+  useEffect(() => {
+    writeSessionState("realtime", { datasetId, rate, completed });
+  }, [completed, datasetId, rate]);
   useEffect(() => {
     Promise.all([api.streamDatasets(), api.streamStatus()])
       .then(([data, initial]) => {
@@ -327,7 +386,7 @@ function RealtimeWorkspace({
           (dataset) => dataset.name === "kaggle_inference_sample",
         );
         setDatasets(inferenceDatasets);
-        setDatasetId(inferenceDatasets[0]?.id ?? "");
+        setDatasetId((current) => current || inferenceDatasets[0]?.id || "");
         setStatus(initial);
         if (!inferenceDatasets.length)
           setError("The 100-row Kaggle inference dataset is unavailable.");
@@ -375,6 +434,7 @@ function RealtimeWorkspace({
     setCompleted([]);
     try {
       setStatus(await api.streamStart(datasetId, models, rate));
+      publishHistoryChange();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not start stream",
@@ -396,174 +456,179 @@ function RealtimeWorkspace({
     })),
   );
   return (
-    <div className="realtime-workspace">
-      <Panel
-        title="Stream controls"
-        eyebrow="100 unlabelled Kaggle transactions"
-        actions={
-          <div className="connection-status">
-            <span
-              className={`connection-dot ${connected ? "online" : "offline"}`}
-            />
-            {connected ? "SSE connected" : "SSE reconnecting"}
-          </div>
-        }
-      >
-        <div className="stream-controls">
-          <label className="field">
-            <span>Dataset</span>
-            <select
-              value={datasetId}
-              disabled={active}
-              onChange={(event) => setDatasetId(event.target.value)}
-            >
-              {datasets.map((dataset) => (
-                <option value={dataset.id} key={dataset.id}>
-                  {dataset.name} · {formatNumber(dataset.row_count)} rows
-                  {dataset.labels_available ? " · Labelled" : " · Unlabelled"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Arrival rate</span>
-            <select
-              value={rate}
-              disabled={active}
-              onChange={(event) => setRate(Number(event.target.value))}
-            >
-              <option value={1}>1 transaction/second</option>
-              <option value={2}>2 transactions/second</option>
-              <option value={5}>5 transactions/second</option>
-            </select>
-          </label>
-          <div className="control-buttons">
-            <button
-              className="button button-primary"
-              disabled={active || !datasetId || !models.length}
-              onClick={() => void start()}
-            >
-              <Icon name="play" />
-              Start
-            </button>
-            <button
-              className="button button-secondary"
-              disabled={status.status !== "RUNNING"}
-              onClick={() => void control("pause")}
-            >
-              <Icon name="pause" />
-              Pause
-            </button>
-            <button
-              className="button button-secondary"
-              disabled={status.status !== "PAUSED"}
-              onClick={() => void control("resume")}
-            >
-              <Icon name="play" />
-              Resume
-            </button>
-            <button
-              className="button button-danger"
-              disabled={!active}
-              onClick={() => void control("stop")}
-            >
-              <Icon name="stop" />
-              Stop
-            </button>
-            <button
-              className="button button-ghost"
-              disabled={active || !status.stream_run_id}
-              onClick={() => void control("restart")}
-            >
-              <Icon name="refresh" />
-              Restart
-            </button>
-          </div>
-        </div>
-        {error ? <ErrorState message={error} /> : null}
-      </Panel>
-      <div className="stats-grid stats-six">
-        <StatCard
-          label="Stream status"
-          value={
-            <StatusBadge
-              tone={
-                status.status === "RUNNING"
-                  ? "low"
-                  : status.status === "FAILED"
-                    ? "high"
-                    : "review"
-              }
-            >
-              {status.status}
-            </StatusBadge>
-          }
-        />
-        <StatCard
-          label="Received"
-          value={formatNumber(status.transactions_received)}
-        />
-        <StatCard
-          label="Processed"
-          value={formatNumber(status.transactions_processed)}
-          tone="low"
-        />
-        <StatCard
-          label="Queued"
-          value={formatNumber(
-            Math.max(status.transactions_queued, queue.length),
-          )}
-          tone={queue.length ? "review" : "neutral"}
-        />
-        <StatCard
-          label="Throughput"
-          value={`${status.current_throughput.toFixed(2)} TPS`}
-        />
-        <StatCard
-          label="P95 latency"
-          value={formatLatency(status.p95_latency_ms)}
-        />
-      </div>
-      <div className="dashboard-grid">
-        <Panel title="Live predictions" eyebrow="Completed in FIFO order">
-          {completed.length ? (
-            <PredictionTable
-              rows={predictionRows}
-              loadInput={(transactionId) =>
-                api
-                  .transaction(transactionId)
-                  .then((response) => response.transaction_payload)
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No completed transactions"
-              detail="Start the stream to publish predictions as each FIFO event completes."
-            />
-          )}
-        </Panel>
-        <Panel title="Live queue" eyebrow={`${queue.length} waiting`}>
-          {queue.length ? (
-            <div className="queue-list">
-              {queue.slice(0, 12).map((item) => (
-                <div key={item.sequence_number}>
-                  <span className="queue-position">#{item.queue_position}</span>
-                  <div>
-                    <strong>{item.transaction_id}</strong>
-                    <small>Sequence {item.sequence_number}</small>
-                  </div>
-                  <StatusBadge tone="review">Queued</StatusBadge>
-                </div>
-              ))}
+    <>
+      <div className="realtime-workspace">
+        <Panel
+          title="Stream controls"
+          eyebrow="100 unlabelled Kaggle transactions"
+          actions={
+            <div className="connection-status">
+              <span
+                className={`connection-dot ${connected ? "online" : "offline"}`}
+              />
+              {connected ? "SSE connected" : "SSE reconnecting"}
             </div>
-          ) : (
-            <EmptyState
-              title="Queue is empty"
-              detail="Backlog appears here when arrivals exceed scoring throughput."
-            />
-          )}
+          }
+        >
+          <div className="stream-controls">
+            <label className="field">
+              <span>Dataset</span>
+              <select
+                value={datasetId}
+                disabled={active}
+                onChange={(event) => setDatasetId(event.target.value)}
+              >
+                {datasets.map((dataset) => (
+                  <option value={dataset.id} key={dataset.id}>
+                    {dataset.name} · {formatNumber(dataset.row_count)} rows
+                    {dataset.labels_available ? " · Labelled" : " · Unlabelled"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Arrival rate</span>
+              <select
+                value={rate}
+                disabled={active}
+                onChange={(event) => setRate(Number(event.target.value))}
+              >
+                <option value={1}>1 transaction/second</option>
+                <option value={2}>2 transactions/second</option>
+                <option value={5}>5 transactions/second</option>
+              </select>
+            </label>
+            <div className="control-buttons">
+              <button
+                className="button button-primary"
+                disabled={active || !datasetId || !models.length}
+                onClick={() => void start()}
+              >
+                <Icon name="play" />
+                Start
+              </button>
+              <button
+                className="button button-secondary"
+                disabled={status.status !== "RUNNING"}
+                onClick={() => void control("pause")}
+              >
+                <Icon name="pause" />
+                Pause
+              </button>
+              <button
+                className="button button-secondary"
+                disabled={status.status !== "PAUSED"}
+                onClick={() => void control("resume")}
+              >
+                <Icon name="play" />
+                Resume
+              </button>
+              <button
+                className="button button-danger"
+                disabled={!active}
+                onClick={() => void control("stop")}
+              >
+                <Icon name="stop" />
+                Stop
+              </button>
+              <button
+                className="button button-ghost"
+                disabled={active || !status.stream_run_id}
+                onClick={() => void control("restart")}
+              >
+                <Icon name="refresh" />
+                Restart
+              </button>
+            </div>
+          </div>
+          {error ? <ErrorState message={error} /> : null}
         </Panel>
+        <div className="stats-grid stats-six">
+          <StatCard
+            label="Stream status"
+            value={
+              <StatusBadge
+                tone={
+                  status.status === "RUNNING"
+                    ? "low"
+                    : status.status === "FAILED"
+                      ? "high"
+                      : "review"
+                }
+              >
+                {status.status}
+              </StatusBadge>
+            }
+          />
+          <StatCard
+            label="Received"
+            value={formatNumber(status.transactions_received)}
+          />
+          <StatCard
+            label="Processed"
+            value={formatNumber(status.transactions_processed)}
+            tone="low"
+          />
+          <StatCard
+            label="Queued"
+            value={formatNumber(
+              Math.max(status.transactions_queued, queue.length),
+            )}
+            tone={queue.length ? "review" : "neutral"}
+          />
+          <StatCard
+            label="Throughput"
+            value={`${status.current_throughput.toFixed(2)} TPS`}
+          />
+          <StatCard
+            label="P95 latency"
+            value={formatLatency(status.p95_latency_ms)}
+          />
+        </div>
+        <div className="dashboard-grid">
+          <Panel title="Live predictions" eyebrow="Completed in FIFO order">
+            {completed.length ? (
+              <PredictionTable
+                rows={predictionRows}
+                loadInput={(transactionId) =>
+                  api
+                    .transaction(transactionId)
+                    .then((response) => response.transaction_payload)
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No completed transactions"
+                detail="Start the stream to publish predictions as each FIFO event completes."
+              />
+            )}
+          </Panel>
+          <Panel title="Live queue" eyebrow={`${queue.length} waiting`}>
+            {queue.length ? (
+              <div className="queue-list">
+                {queue.slice(0, 12).map((item) => (
+                  <div key={item.sequence_number}>
+                    <span className="queue-position">
+                      #{item.queue_position}
+                    </span>
+                    <div>
+                      <strong>{item.transaction_id}</strong>
+                      <small>Sequence {item.sequence_number}</small>
+                    </div>
+                    <StatusBadge tone="review">Queued</StatusBadge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="Queue is empty"
+                detail="Backlog appears here when arrivals exceed scoring throughput."
+              />
+            )}
+          </Panel>
+        </div>
       </div>
-    </div>
+      <AnalysisHistory mode="realtime" />
+    </>
   );
 }

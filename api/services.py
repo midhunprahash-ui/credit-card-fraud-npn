@@ -312,6 +312,10 @@ class BatchPredictionService:
             for index, row in chunk.iterrows():
                 row_number = int(index) + 2
                 transaction_id = _json_scalar(row.get("TransactionID"))
+                payload = {
+                    column: _json_scalar(value) for column, value in row.items()
+                }
+                payload.pop("isFraud", None)
                 if bool(duplicate_mask.loc[index]):
                     invalid.append(
                         {
@@ -319,13 +323,10 @@ class BatchPredictionService:
                             "transaction_id": transaction_id,
                             "error_code": "duplicate_transaction_id",
                             "message": "TransactionID is duplicated in the uploaded CSV",
+                            "input_payload": payload,
                         }
                     )
                     continue
-                payload = {
-                    column: _json_scalar(value) for column, value in row.items()
-                }
-                payload.pop("isFraud", None)
                 try:
                     prediction = self.prediction_service.predict(
                         payload, model_identifiers
@@ -339,11 +340,14 @@ class BatchPredictionService:
                             "transaction_id": transaction_id,
                             "error_code": error.code,
                             "message": error.message,
+                            "input_payload": payload,
                         }
                     )
                     continue
                 flat = _flatten_batch_prediction(prediction)
                 flat["input_payload"] = payload
+                flat["model_results"] = prediction["results"]
+                flat["history_ordinal"] = row_number - 2
                 results.append(flat)
                 for model in prediction["results"]:
                     fraud_counts[model["model_identifier"]] += int(model["decision"])
@@ -449,7 +453,17 @@ def build_batch_download(report: dict[str, Any]) -> bytes:
             "prediction_results.csv",
             pd.DataFrame(
                 [
-                    {key: value for key, value in row.items() if key != "input_payload"}
+                    {
+                        key: value
+                        for key, value in row.items()
+                        if key
+                        not in {
+                            "input_payload",
+                            "model_results",
+                            "history_ordinal",
+                            "history_prediction_ids",
+                        }
+                    }
                     for row in report["results"]
                 ]
             ).to_csv(index=False),

@@ -20,6 +20,7 @@ export function PredictionResults({
           score: result.risk_score,
           threshold: result.threshold,
           input,
+          historyPredictionId: result.history_prediction_id ?? undefined,
         }))}
       />
     </div>

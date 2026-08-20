@@ -107,8 +107,14 @@ class SupabaseRestClient:
 class SupabaseStreamRepository:
     PREFETCH_SIZE = 100
 
-    def __init__(self, client: SupabaseRestClient) -> None:
+    def __init__(
+        self,
+        client: SupabaseRestClient,
+        *,
+        history_repository: Any | None = None,
+    ) -> None:
         self.client = client
+        self.history_repository = history_repository
 
     async def list_datasets(self) -> list[dict[str, Any]]:
         return await self.client.request(
@@ -220,6 +226,8 @@ class SupabaseStreamRepository:
             body=values,
             prefer="return=minimal",
         )
+        if self.history_repository is not None:
+            await self.history_repository.update_stream_run(run_id, values)
 
     async def persist_completed_batch(
         self,
@@ -312,6 +320,10 @@ class SupabaseStreamRepository:
                 prefer="resolution=merge-duplicates,return=minimal",
             )
         await self.update_run(run_id, run_values)
+        if self.history_repository is not None:
+            await self.history_repository.persist_stream_batch(
+                run_id, records, run_values
+            )
 
     async def list_alerts(
         self,

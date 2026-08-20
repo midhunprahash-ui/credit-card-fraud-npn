@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import { api } from "../api/client";
-import type { ModelIdentifier } from "../api/types";
+import type { ExplanationResponse, ModelIdentifier } from "../api/types";
 import { formatNumber } from "../utils/format";
+import { publishHistoryChange } from "../utils/storage";
 import { ErrorState, StatusBadge } from "./ui";
 
 export type PredictionTableRow = {
@@ -14,6 +15,8 @@ export type PredictionTableRow = {
   score: number;
   threshold: number;
   input?: Record<string, unknown>;
+  historyPredictionId?: string;
+  cachedExplanation?: ExplanationResponse;
 };
 
 type RowDetail = {
@@ -59,11 +62,13 @@ export function PredictionTable({
       setDetail((current) =>
         current?.key === row.key ? { ...current, input } : current,
       );
-      const explanation = await api.explain(
-        input,
-        row.modelIdentifier,
-        row.decision,
-      );
+      const explanation =
+        row.cachedExplanation ??
+        (row.historyPredictionId
+          ? await api.explainHistoryPrediction(row.historyPredictionId)
+          : await api.explain(input, row.modelIdentifier, row.decision));
+      if (row.historyPredictionId && !row.cachedExplanation)
+        publishHistoryChange();
       setDetail((current) =>
         current?.key === row.key
           ? {

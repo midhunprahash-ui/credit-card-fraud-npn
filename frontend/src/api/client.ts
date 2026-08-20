@@ -1,4 +1,7 @@
 import type {
+  AnalysisMode,
+  AnalysisRun,
+  AnalysisRunDetail,
   AlertDetail,
   BatchResponse,
   CompletedStreamEvent,
@@ -14,6 +17,7 @@ import type {
   StreamDataset,
   StreamStatus,
 } from "./types";
+import { getAnalysisClientId } from "../utils/storage";
 
 export const API_URL = (
   import.meta.env.VITE_API_URL ?? "http://localhost:8000"
@@ -30,7 +34,9 @@ export class ApiClientError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const headers = new Headers(init?.headers);
+  headers.set("X-Client-ID", getAnalysisClientId());
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!response.ok) {
     let code = "request_failed";
     let message = `API returned ${response.status}`;
@@ -46,6 +52,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiClientError(message, response.status, code);
   }
   return (await response.json()) as T;
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: { "X-Client-ID": getAnalysisClientId() },
+  });
+  if (!response.ok)
+    throw new ApiClientError(
+      `API returned ${response.status}`,
+      response.status,
+      "request_failed",
+    );
+  return response.blob();
 }
 
 export const api = {
@@ -133,6 +152,19 @@ export const api = {
   streamControl: (control: "pause" | "resume" | "stop" | "restart") =>
     request<StreamStatus>(`/stream/${control}`, { method: "POST" }),
   streamStatus: () => request<StreamStatus>("/stream/status"),
+  history: (mode: AnalysisMode, limit = 20, offset = 0) =>
+    request<{ runs: AnalysisRun[]; limit: number; offset: number }>(
+      `/analysis-history?mode=${mode}&limit=${limit}&offset=${offset}`,
+    ),
+  historyRun: (runId: string) =>
+    request<AnalysisRunDetail>(`/analysis-history/${runId}`),
+  explainHistoryPrediction: (predictionId: string) =>
+    request<ExplanationResponse>(
+      `/analysis-history/predictions/${predictionId}/explain`,
+      { method: "POST" },
+    ),
+  exportHistory: (mode: AnalysisMode) =>
+    requestBlob(`/analysis-history/export?mode=${mode}`),
   alerts: (query = "") =>
     request<{ alerts: FraudAlert[] }>(`/alerts${query ? `?${query}` : ""}`),
   alert: (alertId: string) => request<AlertDetail>(`/alerts/${alertId}`),

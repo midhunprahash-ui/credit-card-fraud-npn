@@ -5,6 +5,7 @@ import type { ModelIdentifier, VersionName } from "./api/types";
 import { AppShell } from "./components/AppShell";
 import { DEFAULT_MODELS } from "./config/models";
 import { LiveAnalysisPage } from "./pages/LiveAnalysisPage";
+import { readSessionState, writeSessionState } from "./utils/storage";
 
 type Filters = {
   versions: VersionName[];
@@ -13,16 +14,19 @@ type Filters = {
 
 export default function App() {
   const [apiOnline, setApiOnline] = useState(false);
-  const [filters, setFilters] = useState<Filters>({
-    versions: ["V1", "V2"],
-    models: DEFAULT_MODELS,
-  });
+  const [filters, setFilters] = useState<Filters>(() =>
+    readSessionState("filters", {
+      versions: ["V1", "V2"] as VersionName[],
+      models: DEFAULT_MODELS,
+    }),
+  );
   useEffect(() => {
     api
       .health()
       .then(() => setApiOnline(true))
       .catch(() => setApiOnline(false));
   }, []);
+  useEffect(() => writeSessionState("filters", filters), [filters]);
   return (
     <AppShell apiOnline={apiOnline}>
       <LiveAnalysisPage filters={filters} onFiltersChange={setFilters} />

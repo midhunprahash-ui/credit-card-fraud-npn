@@ -13,6 +13,7 @@ type IconName =
   | "stop"
   | "refresh"
   | "upload"
+  | "download"
   | "check"
   | "warning"
   | "close";
@@ -78,6 +79,12 @@ const paths: Record<IconName, React.ReactNode> = {
   upload: (
     <>
       <path d="M12 16V3M7 8l5-5 5 5" />
+      <path d="M4 15v5h16v-5" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v13M7 11l5 5 5-5" />
       <path d="M4 15v5h16v-5" />
     </>
   ),

@@ -67,6 +67,7 @@ export type ModelPrediction = {
   champion: boolean;
   processing_status: string;
   important_features: Array<{ feature: string; value: number }> | null;
+  history_prediction_id?: string | null;
 };
 
 export type Agreement = {
@@ -81,6 +82,8 @@ export type PredictionResponse = {
   input_completeness: number;
   results: ModelPrediction[];
   agreement: Agreement;
+  analysis_run_id?: string | null;
+  history_status?: "stored" | "unavailable";
 };
 
 export type ExplanationResponse = {
@@ -117,6 +120,8 @@ export type BatchResponse = {
     message: string;
   }>;
   processing_status: string;
+  analysis_run_id?: string | null;
+  history_status?: "stored" | "unavailable";
 };
 
 export type StreamDataset = {
@@ -162,6 +167,65 @@ export type StreamStatus = {
   unpersisted_transactions: number;
   started_at: string | null;
   completed_at: string | null;
+  analysis_run_id?: string | null;
+  history_status?: "stored" | "unavailable";
+};
+
+export type AnalysisMode = "single" | "csv" | "realtime";
+
+export type AnalysisRun = {
+  id: string;
+  input_mode: AnalysisMode;
+  source_name: string | null;
+  stream_run_id: string | null;
+  selected_models: ModelIdentifier[];
+  status: "PROCESSING" | "COMPLETED" | "PARTIAL" | "FAILED";
+  total_transactions: number;
+  successful_transactions: number;
+  failed_transactions: number;
+  summary: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AnalysisHistoryPrediction = {
+  id: string;
+  analysis_transaction_id: string;
+  model_identifier: ModelIdentifier;
+  model_name: string;
+  model_version: VersionName;
+  model_run_id: string;
+  risk_score: number;
+  threshold: number;
+  decision: boolean;
+  latency_ms: number;
+  explanation_status: "NOT_GENERATED" | "COMPLETED" | "FAILED";
+  explanation_technique: string | null;
+  explanation_technique_label: string | null;
+  top_contributed_features: ExplanationResponse["important_features"] | null;
+  reasoning: string | null;
+  reasoning_source: "openrouter" | "template" | null;
+  explanation_error: string | null;
+  explained_at: string | null;
+  created_at: string;
+};
+
+export type AnalysisHistoryTransaction = {
+  id: string;
+  ordinal: number;
+  transaction_id: number | null;
+  raw_transaction_id: string | null;
+  input_payload: Record<string, unknown>;
+  status: "COMPLETED" | "FAILED";
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  predictions: AnalysisHistoryPrediction[];
+};
+
+export type AnalysisRunDetail = {
+  run: AnalysisRun;
+  transactions: AnalysisHistoryTransaction[];
 };
 
 export type CompletedStreamEvent = {

@@ -89,6 +89,7 @@ describe("AnalysisHistory", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Single JSON/ }),
     );
+    expect(await screen.findByText("FRAUD")).toBeVisible();
     await userEvent.click(await screen.findByRole("button", { name: /100/ }));
 
     await waitFor(() =>
@@ -96,5 +97,8 @@ describe("AnalysisHistory", () => {
     );
     expect(screen.getByText("CatBoost.V2")).toBeVisible();
     expect(screen.getByText("LightGBM.V2")).toBeVisible();
+    expect(
+      screen.getByRole("columnheader", { name: "Analyzed at" }),
+    ).toBeVisible();
   });
 });

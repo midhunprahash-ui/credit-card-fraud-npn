@@ -925,6 +925,9 @@ tbody tr:hover {
 .decision-empty {
   color: var(--faint);
 }
+.date-time-cell {
+  white-space: nowrap;
+}
 .prediction-detail-row:hover {
   background: var(--surface);
 }
@@ -1767,7 +1770,7 @@ tbody tr:hover {
 }
 .history-transaction-summary {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto auto auto;
+  grid-template-columns: minmax(140px, 1fr) auto auto auto auto;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -1985,7 +1988,7 @@ tbody tr:hover {
     grid-template-columns: 105px 1fr 32px;
   }
   .history-transaction-summary {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
   }
   .history-transaction-summary > span:nth-child(2),
   .history-transaction-summary > .status-badge {

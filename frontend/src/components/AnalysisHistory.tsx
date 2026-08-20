@@ -279,6 +279,10 @@ export function AnalysisHistory({ mode }: { mode: AnalysisMode }) {
                 <div className="history-transaction-list">
                   {visibleTransactions.map((transaction) => {
                     const expanded = expandedTransaction === transaction.id;
+                    const hasFraudPrediction = transaction.predictions.some(
+                      (prediction) => prediction.decision,
+                    );
+                    const hasPrediction = transaction.predictions.length > 0;
                     return (
                       <section
                         className="history-transaction"
@@ -298,6 +302,23 @@ export function AnalysisHistory({ mode }: { mode: AnalysisMode }) {
                           <span>
                             {transaction.predictions.length} model result
                             {transaction.predictions.length === 1 ? "" : "s"}
+                          </span>
+                          <span className="history-verdict">
+                            <StatusBadge
+                              tone={
+                                !hasPrediction
+                                  ? "neutral"
+                                  : hasFraudPrediction
+                                    ? "high"
+                                    : "low"
+                              }
+                            >
+                              {!hasPrediction
+                                ? "UNAVAILABLE"
+                                : hasFraudPrediction
+                                  ? "FRAUD"
+                                  : "NOT FRAUD"}
+                            </StatusBadge>
                           </span>
                           <StatusBadge
                             tone={
@@ -331,6 +352,7 @@ export function AnalysisHistory({ mode }: { mode: AnalysisMode }) {
                                     decision: prediction.decision,
                                     score: prediction.risk_score,
                                     threshold: prediction.threshold,
+                                    analyzedAt: prediction.created_at,
                                     input: transaction.input_payload,
                                     historyPredictionId: prediction.id,
                                     cachedExplanation:

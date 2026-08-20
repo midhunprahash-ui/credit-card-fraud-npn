@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api } from "../api/client";
 import type { ExplanationResponse, ModelIdentifier } from "../api/types";
-import { formatNumber } from "../utils/format";
+import { formatDate, formatNumber } from "../utils/format";
 import { publishHistoryChange } from "../utils/storage";
 import { ErrorState, StatusBadge } from "./ui";
 
@@ -14,6 +14,7 @@ export type PredictionTableRow = {
   decision: boolean;
   score: number;
   threshold: number;
+  analyzedAt?: string;
   input?: Record<string, unknown>;
   historyPredictionId?: string;
   cachedExplanation?: ExplanationResponse;
@@ -41,6 +42,7 @@ export function PredictionTable({
   loadInput?: (transactionId: number) => Promise<Record<string, unknown>>;
 }) {
   const [detail, setDetail] = useState<RowDetail | null>(null);
+  const showAnalyzedAt = rows.some((row) => row.analyzedAt);
 
   async function toggle(row: PredictionTableRow) {
     if (detail?.key === row.key) {
@@ -109,6 +111,7 @@ export function PredictionTable({
             <th>Not fraud</th>
             <th>Score</th>
             <th>Threshold</th>
+            {showAnalyzedAt ? <th>Analyzed at</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -120,6 +123,7 @@ export function PredictionTable({
                 row={row}
                 expanded={expanded}
                 detail={expanded ? detail : null}
+                showAnalyzedAt={showAnalyzedAt}
                 onToggle={() => void toggle(row)}
               />
             );
@@ -134,11 +138,13 @@ function PredictionTableEntry({
   row,
   expanded,
   detail,
+  showAnalyzedAt,
   onToggle,
 }: {
   row: PredictionTableRow;
   expanded: boolean;
   detail: RowDetail | null;
+  showAnalyzedAt: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -170,10 +176,13 @@ function PredictionTableEntry({
         </td>
         <td className="mono">{formatNumber(row.score, 6)}</td>
         <td className="mono">{formatNumber(row.threshold, 6)}</td>
+        {showAnalyzedAt ? (
+          <td className="date-time-cell">{formatDate(row.analyzedAt)}</td>
+        ) : null}
       </tr>
       {expanded ? (
         <tr className="prediction-detail-row">
-          <td colSpan={6}>
+          <td colSpan={showAnalyzedAt ? 7 : 6}>
             <PredictionDetail detail={detail} />
           </td>
         </tr>
